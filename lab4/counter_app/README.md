@@ -1,4 +1,5 @@
 # counter_app
+<img width="1037" height="617" alt="ca" src="https://github.com/user-attachments/assets/a69e4fbe-b649-4551-849d-6aa96cccf3b6" />
 
 A new Flutter project.
 
