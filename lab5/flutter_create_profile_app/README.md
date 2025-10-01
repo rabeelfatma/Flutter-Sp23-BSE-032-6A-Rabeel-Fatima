@@ -1,3 +1,6 @@
+<img width="1351" height="643" alt="p1" src="https://github.com/user-attachments/assets/1f772797-06c0-446b-aff5-0aa0056ca8ef" />
+<img width="1339" height="416" alt="p2" src="https://github.com/user-attachments/assets/b6e02e54-f19a-4172-bac6-ce8b7db8e80d" />
+
 # flutter_create_profile_app
 
 A new Flutter project.
