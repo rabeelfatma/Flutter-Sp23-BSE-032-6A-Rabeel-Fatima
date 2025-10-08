@@ -1,3 +1,4 @@
+<img width="1021" height="591" alt="dice app" src="https://github.com/user-attachments/assets/703cc3e5-a107-4624-a60b-7749913e87fc" />
 # my_dice_app
 
 A new Flutter project.
