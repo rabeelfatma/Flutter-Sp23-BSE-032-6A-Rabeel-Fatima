@@ -1,0 +1,50 @@
+# The name of your Flutter app project
+name: cgpa_calculator1
+
+# A short description about the app
+description: "A CGPA Calculator Flutter app using Provider state management."
+
+# Prevent accidental publishing to pub.dev
+publish_to: 'none'
+
+# Version of your app
+version: 1.0.0+1
+
+# The Dart SDK version constraints
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+# ---------------- Dependencies Section ----------------
+dependencies:
+  # Flutter SDK dependency (always required)
+  flutter:
+    sdk: flutter
+
+  # Provider package (required for state management)
+  provider: ^6.1.2
+
+  # Cupertino icons (default iOS icons)
+  cupertino_icons: ^1.0.8
+
+# ---------------- Dev Dependencies Section ----------------
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The Flutter linter package for clean code
+  flutter_lints: ^3.0.2
+
+# ---------------- Flutter Section ----------------
+flutter:
+  uses-material-design: true
+
+  # If you plan to add images or fonts, declare them here.
+  # For example:
+  # assets:
+  #   - assets/images/
+  #
+  # fonts:
+  #   - family: Poppins
+  #     fonts:
+  #       - asset: assets/fonts/Poppins-Regular.ttf
+  #       - asset: assets/fonts/Poppins-Bold.ttf
