@@ -1,3 +1,6 @@
+<img width="1360" height="647" alt="1s" src="https://github.com/user-attachments/assets/bf4e6a16-5c00-4cb3-aa6c-f041b5d0dc5e" />
+****<img width="1351" height="265" alt="2s" src="https://github.com/user-attachments/assets/e52f0fdb-90c7-4791-9197-7c8880ded05d" />
+
 # cgpa_calculator1
 
 A new Flutter project.
