@@ -1,11 +1,15 @@
-// lib/main.dart
+// Required dependencies (add in pubspec.yaml):
+// shared_preferences: ^2.3.0
+// google_fonts: ^6.2.0
+// fl_chart: ^0.70.0
+
 import 'dart:async';
 import 'dart:convert';
-
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(CommitteeApp());
 
@@ -30,36 +34,48 @@ class CommitteeApp extends StatelessWidget {
   }
 }
 
-// ---------------------- MODELS ----------------------
-
+/// ---------------- MODELS ----------------
 class Member {
   String name;
   bool hasPaid;
-
-  Member(this.name, {this.hasPaid = false});
-
-  Map<String, dynamic> toJson() => {'name': name, 'hasPaid': hasPaid};
-  static Member fromJson(Map<String, dynamic> json) =>
-      Member(json['name'], hasPaid: json['hasPaid'] ?? false);
+  double amountPaid;
+  Member(this.name, {this.hasPaid = false, this.amountPaid = 0});
+  Map<String, dynamic> toJson() =>
+      {'name': name, 'hasPaid': hasPaid, 'amountPaid': amountPaid};
+  static Member fromJson(Map<String, dynamic> json) => Member(json['name'],
+      hasPaid: json['hasPaid'] ?? false, amountPaid: json['amountPaid'] ?? 0);
 }
 
 class Committee {
   String name;
+  DateTime startDate;
+  DateTime endDate;
+  double totalAmount;
   List<Member> members;
-
-  Committee(this.name, this.members);
-
+  Committee(this.name, this.members,
+      {DateTime? start, DateTime? end, this.totalAmount = 0})
+      : startDate = start ?? DateTime.now(),
+        endDate = end ?? DateTime.now().add(Duration(days: 30));
   Map<String, dynamic> toJson() => {
     'name': name,
-    'members': members.map((m) => m.toJson()).toList(),
+    'startDate': startDate.toIso8601String(),
+    'endDate': endDate.toIso8601String(),
+    'totalAmount': totalAmount,
+    'members': members.map((m) => m.toJson()).toList()
   };
-
   static Committee fromJson(Map<String, dynamic> json) => Committee(
-      json['name'],
-      (json['members'] as List<dynamic>?)
-          ?.map((m) => Member.fromJson(m as Map<String, dynamic>))
-          .toList() ??
-          []);
+    json['name'],
+    (json['members'] as List<dynamic>?)
+        ?.map((m) => Member.fromJson(m as Map<String, dynamic>))
+        .toList() ??
+        [],
+    start:
+    json['startDate'] != null ? DateTime.parse(json['startDate']) : null,
+    end: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+    totalAmount: json['totalAmount'] != null
+        ? (json['totalAmount'] as num).toDouble()
+        : 0,
+  );
 }
 
 class Message {
@@ -68,14 +84,12 @@ class Message {
   String content;
   DateTime timestamp;
   Message(this.sender, this.receiver, this.content, this.timestamp);
-
   Map<String, dynamic> toJson() => {
     'sender': sender,
     'receiver': receiver,
     'content': content,
     'timestamp': timestamp.toIso8601String()
   };
-
   static Message fromJson(Map<String, dynamic> json) => Message(
       json['sender'] ?? '',
       json['receiver'] ?? '',
@@ -88,32 +102,29 @@ class Meeting {
   DateTime dateTime;
   String description;
   Meeting(this.title, this.dateTime, this.description);
-  Map<String, dynamic> toJson() =>
-      {'title': title, 'dateTime': dateTime.toIso8601String(), 'description': description};
-
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'dateTime': dateTime.toIso8601String(),
+    'description': description
+  };
   static Meeting fromJson(Map<String, dynamic> json) => Meeting(
       json['title'] ?? '',
       DateTime.parse(json['dateTime'] ?? DateTime.now().toIso8601String()),
       json['description'] ?? '');
 }
 
-// ---------------------- SHARED PREFERENCE KEYS ----------------------
-
+/// ---------------- SHARED KEYS ----------------
 const String kAdminEmailKey = 'admin_email';
 const String kAdminPassKey = 'admin_pass';
-const String kCommitteesKey = 'committees v1';
-const String kMessagesKey = 'messages v1';
-const String kMeetingsKey = 'meetings v1';
+const String kCommitteesKey = 'committees_v6';
+const String kMessagesKey = 'messages_v6';
+const String kMeetingsKey = 'meetings_v6';
 
-// ---------------------- LOGIN SCREEN (Only Admin) ----------------------
-
+/// ---------------- LOGIN SCREEN ----------------
 class LoginScreen extends StatefulWidget {
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
-
-// Note: per request there are NO email/password restrictions.
-// "Create Account" saves admin credentials to SharedPreferences.
 
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
@@ -147,21 +158,11 @@ class _LoginScreenState extends State<LoginScreen> {
       savedEmail = email;
       savedPass = pass;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Admin account created (no validation).')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Admin account created')));
   }
 
   void _login() {
-    // Only admin can login. But user requested no restriction on inputs.
-    // We'll treat any provided email/pass as valid if they match saved ones.
-    // If saved ones are empty (first run), allow login regardless.
-    if (savedEmail.isEmpty && savedPass.isEmpty) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => DashboardScreen()),
-      );
-      return;
-    }
     if (_emailController.text == savedEmail &&
         _passController.text == savedPass) {
       Navigator.pushReplacement(
@@ -169,8 +170,6 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => DashboardScreen()),
       );
     } else {
-      // if user insisted "give me same same my code" with no restriction,
-      // still we give a hint but do not enforce strong validation.
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Credentials do not match saved admin.')));
     }
@@ -178,7 +177,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (loading)
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
     return Scaffold(
       body: Center(
         child: Container(
@@ -200,16 +200,18 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Icon(Icons.groups, color: Colors.blueAccent, size: 60),
               SizedBox(height: 15),
-              Text("Committee Management System (Admin Only)",
+              Text("Committee Management System",
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style:
+                  TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               SizedBox(height: 12),
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  labelText: "Email ",
+                  labelText: "Email",
                   prefixIcon: Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15)),
                 ),
               ),
               SizedBox(height: 10),
@@ -217,29 +219,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _passController,
                 obscureText: true,
                 decoration: InputDecoration(
-                  labelText: "Password ",
+                  labelText: "Password",
                   prefixIcon: Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15)),
                 ),
               ),
               SizedBox(height: 16),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15)),
                     minimumSize: Size(double.infinity, 45)),
                 onPressed: _login,
-                child: Text("Login as Admin", style: TextStyle(fontSize: 16, color: Colors.white)),
+                child: Text("Login as Admin",
+                    style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
               SizedBox(height: 8),
               TextButton(
                 onPressed: _createAccount,
-                child: Text("Create Account (store admin in SharedPreferences)"),
-              ),
-              SizedBox(height: 6),
-              Text(
-                "Default admin: 'admin' / 'admin' until you create one.",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                child: Text("Create Account"),
               ),
             ],
           ),
@@ -249,607 +249,488 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// ---------------------- DASHBOARD & FEATURES ----------------------
-
+/// ---------------- DASHBOARD ----------------
 class DashboardScreen extends StatefulWidget {
-  DashboardScreen();
-
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  int _selectedIndex = 0;
   List<Committee> committees = [];
   List<Message> messages = [];
   List<Meeting> meetings = [];
-  bool loading = true;
+  List<Member> drawnMembers = [];
+  bool excludeAlreadyDrawn = true;
+  String lastDraw = '';
+  String selectedAccount = '';
+
+  final _committeeController = TextEditingController();
+  final _memberController = TextEditingController();
+  final _amountController = TextEditingController();
+  final _meetingController = TextEditingController();
+  final _msgController = TextEditingController();
+
+  String _msgReceiver = '';
+  Committee? _selectedCommitteeForMember;
 
   @override
   void initState() {
     super.initState();
-    _loadAll();
-  }
-
-  Future<void> _loadAll() async {
-    final prefs = await SharedPreferences.getInstance();
-    // Load committees
-    final String? cJson = prefs.getString(kCommitteesKey);
-    if (cJson != null) {
-      final list = json.decode(cJson) as List<dynamic>;
-      committees = list.map((c) => Committee.fromJson(c)).toList();
-    } else {
-      // default data
-      committees = [
-        Committee("Finance Committee", [Member("Ali"), Member("Sara"), Member("Usman")]),
-        Committee("Academic Board", [Member("Ayesha"), Member("Zain"), Member("Fatima")]),
-      ];
-    }
-
-    // Messages
-    final String? mJson = prefs.getString(kMessagesKey);
-    if (mJson != null) {
-      final list = json.decode(mJson) as List<dynamic>;
-      messages = list.map((m) => Message.fromJson(m)).toList();
-    }
-
-    // Meetings
-    final String? mtJson = prefs.getString(kMeetingsKey);
-    if (mtJson != null) {
-      final list = json.decode(mtJson) as List<dynamic>;
-      meetings = list.map((m) => Meeting.fromJson(m)).toList();
-    }
-
-    setState(() => loading = false);
-  }
-
-  Future<void> _saveCommittees() async {
-    final prefs = await SharedPreferences.getInstance();
-    final j = json.encode(committees.map((c) => c.toJson()).toList());
-    await prefs.setString(kCommitteesKey, j);
-  }
-
-  Future<void> _saveMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-    final j = json.encode(messages.map((m) => m.toJson()).toList());
-    await prefs.setString(kMessagesKey, j);
-  }
-
-  Future<void> _saveMeetings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final j = json.encode(meetings.map((m) => m.toJson()).toList());
-    await prefs.setString(kMeetingsKey, j);
-  }
-
-  void sendMessage(String receiver, String msg) {
-    messages.add(Message("Admin", receiver, msg, DateTime.now()));
-    _saveMessages();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Message sent to $receiver")));
-    setState(() {});
-  }
-
-  void togglePaid(Committee c, Member m) {
-    setState(() {
-      m.hasPaid = !m.hasPaid;
+    _loadData();
+    Timer.periodic(Duration(minutes: 1), (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Reminder: Pre-draw pending!")));
     });
-    _saveCommittees();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${m.name} payment status updated.")));
   }
 
-  void addCommittee(String name) {
+  Future<void> _loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? comStr = prefs.getString(kCommitteesKey);
+    String? msgStr = prefs.getString(kMessagesKey);
+    String? meetStr = prefs.getString(kMeetingsKey);
+
     setState(() {
-      committees.add(Committee(name, []));
+      committees = comStr != null
+          ? (jsonDecode(comStr) as List)
+          .map((c) => Committee.fromJson(c))
+          .toList()
+          : [];
+      messages = msgStr != null
+          ? (jsonDecode(msgStr) as List)
+          .map((m) => Message.fromJson(m))
+          .toList()
+          : [];
+      meetings = meetStr != null
+          ? (jsonDecode(meetStr) as List)
+          .map((m) => Meeting.fromJson(m))
+          .toList()
+          : [];
     });
-    _saveCommittees();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Committee '$name' added.")));
   }
 
-  void addMember(String committeeName, String memberName) {
-    final c = committees.firstWhere((c) => c.name == committeeName, orElse: () => committees.first);
+  Future<void> _saveData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        kCommitteesKey, jsonEncode(committees.map((c) => c.toJson()).toList()));
+    await prefs.setString(
+        kMessagesKey, jsonEncode(messages.map((m) => m.toJson()).toList()));
+    await prefs.setString(
+        kMeetingsKey, jsonEncode(meetings.map((m) => m.toJson()).toList()));
+  }
+
+  List<Member> _getUndrawnMembers() {
+    List<Member> allMembers = committees.expand((c) => c.members).toList();
+    return excludeAlreadyDrawn
+        ? allMembers.where((m) => !drawnMembers.contains(m)).toList()
+        : allMembers;
+  }
+
+  void _drawMember(Member Function(List<Member>) selector, String type) {
+    List<Member> undrawn = _getUndrawnMembers();
+    if (undrawn.isEmpty) return;
     setState(() {
-      c.members.add(Member(memberName));
+      Member selected = selector(undrawn);
+      drawnMembers.add(selected);
+      lastDraw = '$type: ${selected.name}';
     });
-    _saveCommittees();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Member '$memberName' added to ${c.name}.")));
   }
 
-  void scheduleMeeting(Meeting meeting) {
-    meetings.add(meeting);
-    _saveMeetings();
-    setState(() {});
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Meeting scheduled on ${meeting.dateTime}")));
-    final now = DateTime.now();
-    final diff = meeting.dateTime.difference(now).inSeconds - 5;
-    if (diff > 0) {
-      Timer(Duration(seconds: diff), () {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Reminder: '${meeting.title}' starts soon!")));
-      });
-    }
+  void _drawRandom() =>
+      _drawMember((u) => u[Random().nextInt(u.length)], "Random");
+  void _drawFirst() => _drawMember((u) => u.first, "First");
+  void _drawNeediest() => _drawMember((u) => u.last, "Neediest");
+
+  void _drawSpinner() {
+    List<Member> undrawn = _getUndrawnMembers();
+    if (undrawn.isEmpty) return;
+    final rand = Random();
+    Timer.periodic(Duration(milliseconds: 100), (timer) {
+      if (timer.tick > 10) {
+        timer.cancel();
+        setState(() {
+          Member selected = undrawn[rand.nextInt(undrawn.length)];
+          drawnMembers.add(selected);
+          lastDraw = 'Spinner: ${selected.name}';
+        });
+      }
+    });
+  }
+
+  void _showCommitteeDialog() {
+    final _nameController = TextEditingController();
+    final _totalController = TextEditingController();
+    DateTime? startDate;
+    DateTime? endDate;
+
+    showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text("Create Committee"),
+          content: StatefulBuilder(
+              builder: (context, setStateDialog) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                      controller: _nameController,
+                      decoration:
+                      InputDecoration(labelText: "Committee Name")),
+                  SizedBox(height: 10),
+                  TextField(
+                      controller: _totalController,
+                      keyboardType: TextInputType.number,
+                      decoration:
+                      InputDecoration(labelText: "Total Amount")),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      TextButton(
+                          onPressed: () async {
+                            final date = await showDatePicker(
+                                context: context,
+                                initialDate: DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100));
+                            if (date != null) {
+                              setStateDialog(() => startDate = date);
+                            }
+                          },
+                          child: Text(startDate == null
+                              ? "Select Start Date"
+                              : startDate!
+                              .toLocal()
+                              .toString()
+                              .split(' ')[0])),
+                      SizedBox(width: 10),
+                      TextButton(
+                          onPressed: () async {
+                            final date = await showDatePicker(
+                                context: context,
+                                initialDate:
+                                startDate ?? DateTime.now(),
+                                firstDate: DateTime(2000),
+                                lastDate: DateTime(2100));
+                            if (date != null) {
+                              setStateDialog(() => endDate = date);
+                            }
+                          },
+                          child: Text(endDate == null
+                              ? "Select End Date"
+                              : endDate!
+                              .toLocal()
+                              .toString()
+                              .split(' ')[0])),
+                    ],
+                  ),
+                ],
+              )),
+          actions: [
+            ElevatedButton(
+                onPressed: () {
+                  if (_nameController.text.trim().isEmpty) return;
+                  setState(() {
+                    committees.add(Committee(
+                        _nameController.text,
+                        [],
+                        start: startDate,
+                        end: endDate,
+                        totalAmount:
+                        double.tryParse(_totalController.text) ?? 0));
+                  });
+                  _saveData();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text("Committee Created Successfully")));
+                },
+                child: Text("Create"))
+          ],
+        ));
+  }
+
+  void _addMember() {
+    if (_selectedCommitteeForMember == null ||
+        _memberController.text.trim().isEmpty) return;
+    setState(() {
+      double amount = double.tryParse(_amountController.text) ?? 0;
+      _selectedCommitteeForMember!.members.add(Member(_memberController.text,
+          hasPaid: amount > 0, amountPaid: amount));
+    });
+    _memberController.clear();
+    _amountController.clear();
+    _saveData();
+  }
+
+  void _togglePayment(Member member) {
+    setState(() {
+      member.hasPaid = !member.hasPaid;
+    });
+    _saveData();
+  }
+
+  void _createMeeting(String title) {
+    if (title.trim().isEmpty) return;
+    setState(() {
+      meetings.add(Meeting(title, DateTime.now(), "Scheduled meeting"));
+    });
+    _meetingController.clear();
+    _saveData();
+  }
+
+  void _sendMessage() {
+    if (_msgController.text.trim().isEmpty || _msgReceiver.isEmpty) return;
+    setState(() {
+      messages.add(Message(
+          "Admin", _msgReceiver, _msgController.text, DateTime.now()));
+    });
+    _msgController.clear();
+    _msgReceiver = '';
+    _saveData();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text("Message Sent Successfully")));
+  }
+
+  void _showPaymentDialog() {
+    final _dialogName = TextEditingController();
+    final _dialogAccount = TextEditingController();
+    final _dialogAmount = TextEditingController();
+
+    showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text("Send Payment"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: _dialogName,
+                  decoration: InputDecoration(labelText: "Member Name")),
+              TextField(
+                  controller: _dialogAccount,
+                  decoration:
+                  InputDecoration(labelText: "Account Number")),
+              TextField(
+                  controller: _dialogAmount,
+                  decoration: InputDecoration(labelText: "Amount")),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+                onPressed: () {
+                  if (_dialogName.text.isNotEmpty &&
+                      _dialogAmount.text.isNotEmpty) {
+                    double amount =
+                        double.tryParse(_dialogAmount.text) ?? 0;
+                    for (var c in committees) {
+                      for (var m in c.members) {
+                        if (m.name == _dialogName.text) {
+                          m.amountPaid += amount;
+                          m.hasPaid = true;
+                        }
+                      }
+                    }
+                    _saveData();
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text("Payment Sent Successfully")));
+                  }
+                },
+                child: Text("Send"))
+          ],
+        ));
+  }
+
+  void _showAccountDialog() {
+    showDialog(
+        context: context,
+        builder: (_) {
+          return AlertDialog(
+            title: Text("Select Account"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                    title: Text("JazzCash"),
+                    onTap: () {
+                      setState(() => selectedAccount = "JazzCash");
+                      Navigator.pop(context);
+                      _showPaymentDialog();
+                    }),
+                ListTile(
+                    title: Text("Easypaisa"),
+                    onTap: () {
+                      setState(() => selectedAccount = "Easypaisa");
+                      Navigator.pop(context);
+                      _showPaymentDialog();
+                    }),
+                ListTile(
+                    title: Text("Bank"),
+                    onTap: () {
+                      setState(() => selectedAccount = "Bank");
+                      Navigator.pop(context);
+                      _showPaymentDialog();
+                    }),
+              ],
+            ),
+          );
+        });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return Scaffold(body: Center(child: CircularProgressIndicator()));
-    final pages = [
-      HomeDashboard(committees: committees),
-      CommitteeScreenV2(
-        committees: committees,
-        onTogglePaid: togglePaid,
-        onAddCommittee: addCommittee,
-        onAddMember: addMember,
-      ),
-      MessageCenterV2(
-        messages: messages,
-        committees: committees,
-        onSend: sendMessage,
-      ),
-      MeetingSchedulerScreenV2(onAddMeeting: scheduleMeeting, meetings: meetings),
-      ReportScreenV2(committees: committees),
-    ];
-
-    final titles = ["Dashboard", "Committees", "Messages", "Meetings", "Reports"];
+    List<Member> allMembers = committees.expand((c) => c.members).toList();
+    double totalPaid = allMembers.fold(0, (sum, m) => sum + m.amountPaid);
+    double totalAmount =
+    committees.fold(0, (sum, c) => sum + c.totalAmount);
 
     return Scaffold(
-      appBar: AppBar(title: Text(titles[_selectedIndex])),
-      body: AnimatedSwitcher(duration: Duration(milliseconds: 400), child: pages[_selectedIndex]),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        backgroundColor: Colors.grey[900],
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.groups), label: "Committees"),
-          BottomNavigationBarItem(icon: Icon(Icons.message), label: "Messages"),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: "Meetings"),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: "Reports"),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------- HOME DASHBOARD ----------------------
-
-class HomeDashboard extends StatelessWidget {
-  final List<Committee> committees;
-  const HomeDashboard({required this.committees});
-
-  int totalMembersCount() => committees.fold(0, (sum, c) => sum + c.members.length);
-
-  int paidMembersCount() =>
-      committees.fold(0, (sum, c) => sum + c.members.where((m) => m.hasPaid).length);
-
-  double totalFundsFromPaidMembers() {
-    // per-member paid amount = 2000 (as earlier)
-    return paidMembersCount() * 2000.0;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final totalMembers = totalMembersCount();
-    final funds = totalFundsFromPaidMembers();
-
-    return ListView(
-      padding: EdgeInsets.all(20),
-      children: [
-        Text("Overview", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            DashboardCard(title: "Committees", count: committees.length, icon: Icons.groups),
-            DashboardCard(title: "Members", count: totalMembers, icon: Icons.person),
-            DashboardCard(title: "Paid", count: paidMembersCount(), icon: Icons.money),
-          ],
-        ),
-        SizedBox(height: 30),
-        Text("Total Funds (from paid members): PKR ${funds.toStringAsFixed(0)}", style: TextStyle(fontSize: 18)),
-        SizedBox(height: 200, child: DynamicBarChart(committees: committees)),
-      ],
-    );
-  }
-}
-
-class DashboardCard extends StatelessWidget {
-  final String title;
-  final int count;
-  final IconData icon;
-  const DashboardCard({required this.title, required this.count, required this.icon});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 120,
-      height: 100,
-      decoration: BoxDecoration(color: Colors.grey[900], borderRadius: BorderRadius.circular(20)),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon, color: Colors.blueAccent),
-        SizedBox(height: 6),
-        Text(title),
-        Text("$count", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))
-      ]),
-    );
-  }
-}
-
-// ---------------------- COMMITTEE SCREEN V2 (add/search/filter/persistence) ----------------------
-
-class CommitteeScreenV2 extends StatefulWidget {
-  final List<Committee> committees;
-  final Function(Committee, Member) onTogglePaid;
-  final Function(String) onAddCommittee;
-  final Function(String, String) onAddMember;
-
-  CommitteeScreenV2({required this.committees, required this.onTogglePaid, required this.onAddCommittee, required this.onAddMember});
-
-  @override
-  _CommitteeScreenV2State createState() => _CommitteeScreenV2State();
-}
-
-class _CommitteeScreenV2State extends State<CommitteeScreenV2> {
-  String committeeQuery = '';
-  String memberQuery = '';
-  String selectedCommitteeForMember = '';
-  final TextEditingController _committeeSearch = TextEditingController();
-  final TextEditingController _memberSearch = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.committees.isNotEmpty) selectedCommitteeForMember = widget.committees.first.name;
-  }
-
-  List<Committee> get filteredCommittees {
-    if (committeeQuery.trim().isEmpty) return widget.committees;
-    final q = committeeQuery.toLowerCase();
-    return widget.committees.where((c) => c.name.toLowerCase().contains(q) || c.members.any((m) => m.name.toLowerCase().contains(q))).toList();
-  }
-
-  List<Member> membersOf(Committee c) {
-    if (memberQuery.trim().isEmpty) return c.members;
-    final q = memberQuery.toLowerCase();
-    return c.members.where((m) => m.name.toLowerCase().contains(q)).toList();
-  }
-
-  void _showAddCommitteeDialog() {
-    final nameCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: Text("Add Committee"),
-        content: TextField(controller: nameCtrl, decoration: InputDecoration(labelText: "Committee name")),
+      appBar: AppBar(
+        title: Text("Admin Dashboard"),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
-          ElevatedButton(
-              onPressed: () {
-                if (nameCtrl.text.trim().isEmpty) {
-                  // per request no restriction — but avoid empty names
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter a name.")));
-                  return;
-                }
-                widget.onAddCommittee(nameCtrl.text.trim());
-                Navigator.pop(context);
-                setState(() {
-                  if (widget.committees.isNotEmpty) selectedCommitteeForMember = widget.committees.first.name;
-                });
-              },
-              child: Text("Add"))
+          IconButton(
+              onPressed: _showCommitteeDialog,
+              icon: Icon(Icons.add_circle_outline))
         ],
       ),
-    );
-  }
-
-  void _showAddMemberDialog() {
-    final nameCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: Text("Add Member"),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: nameCtrl, decoration: InputDecoration(labelText: "Member name")),
-          SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: selectedCommitteeForMember.isEmpty ? null : selectedCommitteeForMember,
-            items: widget.committees.map((c) => DropdownMenuItem(value: c.name, child: Text(c.name))).toList(),
-            onChanged: (v) => setState(() => selectedCommitteeForMember = v ?? ''),
-            decoration: InputDecoration(labelText: "Select Committee"),
-          )
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel")),
-          ElevatedButton(
-              onPressed: () {
-                if (nameCtrl.text.trim().isEmpty || selectedCommitteeForMember.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter member name and pick a committee.")));
-                  return;
-                }
-                widget.onAddMember(selectedCommitteeForMember, nameCtrl.text.trim());
-                Navigator.pop(context);
-                setState(() {});
-              },
-              child: Text("Add"))
-        ],
-      ),
-    );
-  }
-
-  Widget committeeCard(Committee c) {
-    final paidCount = c.members.where((m) => m.hasPaid).length;
-    final funds = paidCount * 2000.0;
-    return Card(
-      color: Colors.grey[900],
-      child: ExpansionTile(
-        title: Row(children: [
-          Expanded(child: Text("${c.name} — PKR ${funds.toStringAsFixed(0)}")),
-          SizedBox(width: 8),
-          Text("${c.members.length} members", style: TextStyle(fontSize: 12)),
-        ]),
-        children: membersOf(c).map((m) {
-          return ListTile(
-            title: Text(m.name),
-            subtitle: Text(m.hasPaid ? "Paid" : "Pending"),
-            trailing: IconButton(
-              icon: Icon(m.hasPaid ? Icons.check_circle : Icons.circle_outlined, color: m.hasPaid ? Colors.green : Colors.grey),
-              onPressed: () {
-                widget.onTogglePaid(c, m);
-                setState(() {});
-              },
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final list = filteredCommittees;
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(children: [
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: _committeeSearch,
-              decoration: InputDecoration(prefixIcon: Icon(Icons.search), labelText: "Search committees or members"),
-              onChanged: (v) => setState(() => committeeQuery = v),
-            ),
+      body: ListView(
+        padding: EdgeInsets.all(15),
+        children: [
+          Text("Total Committees: ${committees.length}",
+              style: TextStyle(fontSize: 18)),
+          SizedBox(height: 8),
+          Text("Total Collected: \$${totalPaid.toStringAsFixed(2)} / "
+              "\$${totalAmount.toStringAsFixed(2)}"),
+          SizedBox(height: 15),
+          SizedBox(
+            height: 200,
+            child: LineChart(LineChartData(
+              gridData: FlGridData(show: false),
+              titlesData: FlTitlesData(show: false),
+              borderData: FlBorderData(show: false),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: committees
+                      .asMap()
+                      .entries
+                      .map((e) => FlSpot(
+                      e.key.toDouble(),
+                      e.value.members.fold(
+                          0, (sum, m) => sum + m.amountPaid)))
+                      .toList(),
+                  isCurved: true,
+                  barWidth: 3,
+                  belowBarData: BarAreaData(show: true),
+                )
+              ],
+            )),
           ),
-          SizedBox(width: 8),
-          ElevatedButton.icon(onPressed: _showAddCommitteeDialog, icon: Icon(Icons.add), label: Text("Add Committee")),
-          SizedBox(width: 8),
-          ElevatedButton.icon(onPressed: _showAddMemberDialog, icon: Icon(Icons.person_add), label: Text("Add Member")),
-        ]),
-        SizedBox(height: 10),
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: _memberSearch,
-              decoration: InputDecoration(prefixIcon: Icon(Icons.filter_list), labelText: "Filter members (within committee open)"),
-              onChanged: (v) => setState(() => memberQuery = v),
-            ),
-          ),
-        ]),
-        SizedBox(height: 12),
-        Expanded(
-          child: list.isEmpty
-              ? Center(child: Text("No committees found."))
-              : ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (context, idx) => committeeCard(list[idx]),
-          ),
-        ),
-      ]),
-    );
-  }
-}
-
-// ---------------------- MESSAGE CENTER V2 ----------------------
-
-class MessageCenterV2 extends StatefulWidget {
-  final List<Message> messages;
-  final List<Committee> committees;
-  final Function(String, String) onSend;
-
-  MessageCenterV2({required this.messages, required this.onSend, required this.committees});
-
-  @override
-  _MessageCenterV2State createState() => _MessageCenterV2State();
-}
-
-class _MessageCenterV2State extends State<MessageCenterV2> {
-  final TextEditingController msgCtrl = TextEditingController();
-  String selectedReceiver = '';
-
-  @override
-  void initState() {
-    super.initState();
-    final members = widget.committees.expand((c) => c.members.map((m) => m.name)).toList();
-    if (members.isNotEmpty) selectedReceiver = members.first;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final allMembers = widget.committees.expand((c) => c.members.map((m) => m.name)).toList();
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(children: [
-        DropdownButtonFormField<String>(
-          decoration: InputDecoration(labelText: "Select Member to message"),
-          value: selectedReceiver.isEmpty ? null : selectedReceiver,
-          items: allMembers.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
-          onChanged: (v) => setState(() => selectedReceiver = v ?? ''),
-        ),
-        SizedBox(height: 8),
-        TextField(controller: msgCtrl, decoration: InputDecoration(labelText: "Message")),
-        SizedBox(height: 8),
-        ElevatedButton(
-            onPressed: selectedReceiver.isEmpty || msgCtrl.text.trim().isEmpty
-                ? null
-                : () {
-              widget.onSend(selectedReceiver, msgCtrl.text.trim());
-              msgCtrl.clear();
-              setState(() {});
-            },
-            child: Text("Send Message")),
-        SizedBox(height: 12),
-        Expanded(
-          child: widget.messages.isEmpty
-              ? Center(child: Text("No messages"))
-              : ListView.builder(
-              itemCount: widget.messages.length,
-              itemBuilder: (context, idx) {
-                final msg = widget.messages[idx];
-                return Card(
-                  color: Colors.grey[900],
-                  child: ListTile(
-                    title: Text("${msg.sender} ➜ ${msg.receiver}"),
-                    subtitle: Text(msg.content),
-                    trailing: Text("${msg.timestamp.hour.toString().padLeft(2, '0')}:${msg.timestamp.minute.toString().padLeft(2, '0')}"),
+          SizedBox(height: 15),
+          Text("Committees:",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          for (var c in committees)
+            ExpansionTile(
+              title: Text("${c.name} (${c.members.length} members)"),
+              children: [
+                for (var m in c.members)
+                  ListTile(
+                    title: Text(m.name),
+                    subtitle:
+                    Text("Paid: \$${m.amountPaid.toStringAsFixed(2)}"),
+                    trailing: IconButton(
+                        icon: Icon(
+                          m.hasPaid
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          color: m.hasPaid ? Colors.green : Colors.grey,
+                        ),
+                        onPressed: () => _togglePayment(m)),
                   ),
-                );
-              }),
-        )
-      ]),
-    );
-  }
-}
-
-// ---------------------- MEETING SCHEDULER V2 ----------------------
-
-class MeetingSchedulerScreenV2 extends StatefulWidget {
-  final Function(Meeting) onAddMeeting;
-  final List<Meeting> meetings;
-  MeetingSchedulerScreenV2({required this.onAddMeeting, required this.meetings});
-
-  @override
-  _MeetingSchedulerScreenV2State createState() => _MeetingSchedulerScreenV2State();
-}
-
-class _MeetingSchedulerScreenV2State extends State<MeetingSchedulerScreenV2> {
-  final _titleCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  DateTime? selectedDateTime;
-
-  void _pickDateTime() async {
-    DateTime? date = await showDatePicker(context: context, firstDate: DateTime.now(), lastDate: DateTime(2100), initialDate: DateTime.now());
-    if (date == null) return;
-    TimeOfDay? time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-    if (time == null) return;
-    setState(() {
-      selectedDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Column(children: [
-        TextField(controller: _titleCtrl, decoration: InputDecoration(labelText: "Meeting Title")),
-        TextField(controller: _descCtrl, decoration: InputDecoration(labelText: "Description")),
-        SizedBox(height: 8),
-        ElevatedButton.icon(onPressed: _pickDateTime, icon: Icon(Icons.calendar_today), label: Text(selectedDateTime == null ? "Pick Date & Time" : "${selectedDateTime!.day}/${selectedDateTime!.month} - ${selectedDateTime!.hour}:${selectedDateTime!.minute.toString().padLeft(2, '0')}")),
-        SizedBox(height: 8),
-        ElevatedButton(onPressed: selectedDateTime == null || _titleCtrl.text.trim().isEmpty ? null : () {
-          widget.onAddMeeting(Meeting(_titleCtrl.text.trim(), selectedDateTime!, _descCtrl.text.trim()));
-          _titleCtrl.clear();
-          _descCtrl.clear();
-          setState(() => selectedDateTime = null);
-        }, child: Text("Schedule Meeting")),
-        SizedBox(height: 12),
-        Expanded(child: widget.meetings.isEmpty ? Center(child: Text("No meetings")) : ListView.builder(itemCount: widget.meetings.length, itemBuilder: (context, idx) {
-          final m = widget.meetings[idx];
-          return Card(color: Colors.grey[900], child: ListTile(leading: Icon(Icons.event, color: Colors.blueAccent), title: Text(m.title), subtitle: Text("${m.description}\n${m.dateTime.day}/${m.dateTime.month} ${m.dateTime.hour}:${m.dateTime.minute.toString().padLeft(2, '0')}")));
-        }))
-      ]),
-    );
-  }
-}
-
-// ---------------------- REPORT SCREEN V2 ----------------------
-
-class ReportScreenV2 extends StatelessWidget {
-  final List<Committee> committees;
-  ReportScreenV2({required this.committees});
-
-  double fundsOfCommittee(Committee c) {
-    final paidCount = c.members.where((m) => m.hasPaid).length;
-    return paidCount * 2000.0;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final totalFunds = committees.fold(0.0, (sum, c) => sum + fundsOfCommittee(c));
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(children: [
-          Text("Reports Summary", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          SizedBox(height: 20),
-          Text("Total Committees: ${committees.length}"),
-          Text("Total Funds (from paid members): PKR ${totalFunds.toStringAsFixed(0)}"),
-          SizedBox(height: 20),
-          SizedBox(height: 250, child: DynamicBarChart(committees: committees)),
-        ]),
-      ),
-    );
-  }
-}
-
-// ---------------------- DYNAMIC BAR CHART ----------------------
-
-class DynamicBarChart extends StatelessWidget {
-  final List<Committee> committees;
-  DynamicBarChart({required this.committees});
-
-  @override
-  Widget build(BuildContext context) {
-    // Each paid member contributes 2000
-    final values = committees.map((c) => c.members.where((m) => m.hasPaid).length * 2000.0).toList();
-    final maxY = (values.isEmpty ? 10.0 : values.reduce((a, b) => a > b ? a : b)) + 2000;
-
-    return BarChart(
-      BarChartData(
-        maxY: maxY <= 0 ? 10 : maxY,
-        alignment: BarChartAlignment.spaceAround,
-        barGroups: List.generate(values.length, (i) {
-          return BarChartGroupData(
-            x: i,
-            barRods: [BarChartRodData(toY: values[i])],
-          );
-        }),
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  final i = value.toInt();
-                  if (i >= 0 && i < committees.length) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        committees[i].name,
-                        style: TextStyle(fontSize: 10, color: Colors.white),
-                      ),
-                    );
-                  }
-                  return SizedBox();
-          return Text('');
-              },
-              reservedSize: 60,
-              interval: 1,
+              ],
             ),
+          SizedBox(height: 20),
+          Text("Member Management",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          DropdownButton<Committee>(
+            isExpanded: true,
+            value: _selectedCommitteeForMember,
+            hint: Text("Select Committee"),
+            onChanged: (val) =>
+                setState(() => _selectedCommitteeForMember = val),
+            items: committees
+                .map((c) =>
+                DropdownMenuItem(value: c, child: Text(c.name)))
+                .toList(),
           ),
-          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
-          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        gridData: FlGridData(show: true),
-        borderData: FlBorderData(show: false),
+          TextField(
+              controller: _memberController,
+              decoration: InputDecoration(labelText: "Member Name")),
+          TextField(
+              controller: _amountController,
+              decoration: InputDecoration(labelText: "Amount Paid")),
+          SizedBox(height: 5),
+          ElevatedButton(onPressed: _addMember, child: Text("Add Member")),
+          SizedBox(height: 20),
+          Text("Draw System",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SwitchListTile(
+              title: Text("Exclude Already Drawn"),
+              value: excludeAlreadyDrawn,
+              onChanged: (val) =>
+                  setState(() => excludeAlreadyDrawn = val)),
+          Wrap(
+            spacing: 10,
+            children: [
+              ElevatedButton(onPressed: _drawRandom, child: Text("Random")),
+              ElevatedButton(onPressed: _drawFirst, child: Text("First")),
+              ElevatedButton(onPressed: _drawNeediest, child: Text("Neediest")),
+              ElevatedButton(onPressed: _drawSpinner, child: Text("Spinner")),
+            ],
+          ),
+          if (lastDraw.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text("Last Draw: $lastDraw",
+                  style: TextStyle(color: Colors.blueAccent)),
+            ),
+          SizedBox(height: 20),
+          Text("Meetings",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          TextField(
+              controller: _meetingController,
+              decoration: InputDecoration(labelText: "Meeting Title")),
+          SizedBox(height: 5),
+          ElevatedButton(
+              onPressed: () => _createMeeting(_meetingController.text),
+              child: Text("Schedule Meeting")),
+          for (var m in meetings)
+            ListTile(
+              leading: Icon(Icons.calendar_today, color: Colors.blueAccent),
+              title: Text(m.title),
+              subtitle: Text(m.dateTime.toString().split('.')[0]),
+            ),
+          SizedBox(height: 20),
+          Text("Messaging",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          TextField(
+              onChanged: (val) => _msgReceiver = val,
+              decoration: InputDecoration(labelText: "Receiver Name")),
+          TextField(
+              controller: _msgController,
+              decoration: InputDecoration(labelText: "Message Content")),
+          SizedBox(height: 5),
+          ElevatedButton(onPressed: _sendMessage, child: Text("Send Message")),
+          for (var msg in messages.reversed.take(5))
+            ListTile(
+              title: Text("${msg.sender} ➜ ${msg.receiver}"),
+              subtitle: Text(msg.content),
+              trailing: Text(msg.timestamp.toString().split('.')[0]),
+            ),
+          SizedBox(height: 20),
+          ElevatedButton(
+              onPressed: _showAccountDialog,
+              child: Text("Send Payment")),
+          if (selectedAccount.isNotEmpty)
+            Text("Selected: $selectedAccount",
+                style: TextStyle(color: Colors.blueAccent)),
+        ],
       ),
     );
   }
