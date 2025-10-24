@@ -1,7 +1,3 @@
-// Required dependencies (add in pubspec.yaml):
-// shared_preferences: ^2.3.0
-// google_fonts: ^6.2.0
-// fl_chart: ^0.70.0
 
 import 'dart:async';
 import 'dart:convert';
