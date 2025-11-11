@@ -265,8 +265,6 @@ class NotificationService {
     }
     return scheduledDate;
   }
-
-  // Helper to find the next occurrence of a specific day and time (used for Custom Days)
   tz.TZDateTime _nextInstanceOfTimeOnDay(DateTime scheduledTime, int dayOfWeek) {
     tz.TZDateTime now = tz.TZDateTime.now(tz.local);
 
@@ -290,8 +288,6 @@ class NotificationService {
       scheduledTime.minute,
       0,
     );
-
-    // If the calculated time is still in the past (e.g., calculation ran over midnight), reschedule for next week
     if (finalSchedule.isBefore(now)) {
       finalSchedule = finalSchedule.add(const Duration(days: 7));
     }
@@ -299,7 +295,7 @@ class NotificationService {
     return finalSchedule;
   }
 
-  // Helper to get the day name for custom day notification titles
+ 
   String _dayOfWeekName(int day) {
     switch (day) {
       case 1: return 'Monday';
@@ -312,8 +308,6 @@ class NotificationService {
       default: return '';
     }
   }
-
-  // Helper function to calculate the next occurrence time for a simple daily/weekly repeating task (Original function, kept for compatibility if needed)
   tz.TZDateTime _nextInstanceOfTime(TimeOfDay time) {
     final now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate = tz.TZDateTime(
@@ -331,8 +325,6 @@ class NotificationService {
     }
     return scheduledDate;
   }
-
-  /// Schedule a repeating notification (Daily/Weekly) - NOTE: Replaced by scheduleAdvancedNotification, but kept here if used elsewhere.
   Future<int> scheduleRepeatingNotification({
     required int id,
     required String title,
