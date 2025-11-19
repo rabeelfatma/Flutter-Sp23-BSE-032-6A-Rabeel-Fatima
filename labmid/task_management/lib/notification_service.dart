@@ -267,8 +267,11 @@ class NotificationService {
     }
     return scheduledDate;
   }
+<<<<<<< HEAD
 
   // Helper to get the next instance of a time on a specific day of the week
+=======
+>>>>>>> b3e708fb4277414dd8b6e2b7fc506817bb1374f9
   tz.TZDateTime _nextInstanceOfTimeOnDay(DateTime scheduledTime, int dayOfWeek) {
     tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     // dayOfWeek is 1 for Monday, 7 for Sunday (TZDateTime.weekday)
@@ -284,8 +287,19 @@ class NotificationService {
       scheduledTime.hour,
       scheduledTime.minute,
     );
+<<<<<<< HEAD
   }
 
+=======
+    if (finalSchedule.isBefore(now)) {
+      finalSchedule = finalSchedule.add(const Duration(days: 7));
+    }
+
+    return finalSchedule;
+  }
+
+ 
+>>>>>>> b3e708fb4277414dd8b6e2b7fc506817bb1374f9
   String _dayOfWeekName(int day) {
     switch (day) {
       case 1:
@@ -306,7 +320,58 @@ class NotificationService {
         return '';
     }
   }
+<<<<<<< HEAD
 
+=======
+  tz.TZDateTime _nextInstanceOfTime(TimeOfDay time) {
+    final now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      time.hour,
+      time.minute,
+      0,
+    );
+
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = scheduledDate.add(const Duration(days: 1));
+    }
+    return scheduledDate;
+  }
+  Future<int> scheduleRepeatingNotification({
+    required int id,
+    required String title,
+    required String body,
+    required TimeOfDay scheduledTime,
+    required RepeatInterval interval,
+    String soundAsset = 'bell.mp3',
+  }) async {
+    tz.TZDateTime scheduledDate = _nextInstanceOfTime(scheduledTime);
+
+    // Using zonedSchedule for fixed time repetition
+    await _plugin.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduledDate,
+      _getNotificationDetails(soundAsset),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+      UILocalNotificationDateInterpretation.absoluteTime,
+      // Match component for daily/weekly repeat
+      matchDateTimeComponents: interval == RepeatInterval.daily
+          ? DateTimeComponents.time
+          : DateTimeComponents.dayOfWeekAndTime,
+      payload: id.toString(),
+    );
+
+    return id;
+  }
+
+  /// Cancel a specific notification
+>>>>>>> b3e708fb4277414dd8b6e2b7fc506817bb1374f9
   Future<void> cancel(int id) async {
     await _plugin.cancel(id);
   }
@@ -321,6 +386,7 @@ class NotificationService {
     debugPrint('Cancelled all notifications for Task ID: $taskId');
   }
 }
+<<<<<<< HEAD
 
 // Global helper function to simplify usage outside the class
 Future<int> scheduleAdvancedNotification({
@@ -342,3 +408,5 @@ Future<int> scheduleAdvancedNotification({
     customDays: customDays,
   );
 }
+=======
+>>>>>>> b3e708fb4277414dd8b6e2b7fc506817bb1374f9
