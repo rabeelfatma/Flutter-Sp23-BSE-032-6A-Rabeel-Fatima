@@ -11,36 +11,25 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path/path.dart' as p;
 import 'db_helper.dart';
-class NotificationService {
-  NotificationService._();
-  static final NotificationService instance = NotificationService._();
-  Future<void> init() async {}
-  Future<int> scheduleNotification({
-    required int id, required String title, required String body,
-    required DateTime scheduledDate, required String soundAsset,
-  }) async => id + 1000;
-  Future<void> cancel(int id) async {}
-}
-
-Future<int> scheduleAdvancedNotification({
-  required int id, required String title, required String body,
-  required DateTime scheduledTime, required String soundAsset,
-}) async {
-  final notifId = await NotificationService.instance.scheduleNotification(
-    id: id, title: title, body: body, scheduledDate: scheduledTime, soundAsset: soundAsset,
-  );
-  return notifId;
-}
+import 'notification_service.dart';
 
 const List<String> availableSounds = ['bell.mp3', 'chime.mp3', 'soft.mp3'];
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Initialize Notification service early (timezones and plugin)
   await NotificationService.instance.init();
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => TaskProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
-// ---------------- Models ----------------
 class Task {
   int? id;
   String title;
@@ -53,27 +42,32 @@ class Task {
   bool isCompleted;
   int? notificationId;
   String soundAsset;
-  String? completionTime; // NEW: Added in previous step
+  String? completionTime;
+  String? status;
 
   Task({
     this.id, required this.title, this.description, this.dueDate, this.dueTime,
     this.priority = 0, this.repeatRule, this.customDays, this.isCompleted = false,
     this.notificationId, this.soundAsset = 'bell.mp3', this.completionTime,
+    this.status = 'In Progress', // Default status for new tasks
   });
 
   Map<String, dynamic> toMap() => {
     'id': id, 'title': title, 'description': description,
+    // Store as epoch seconds
     'dueDate': dueDate != null ? (dueDate!.millisecondsSinceEpoch ~/ 1000) : null,
     'dueTime': dueTime, 'priority': priority, 'repeatRule': repeatRule,
     'customDays': customDays?.join(','),
     'isCompleted': isCompleted ? 1 : 0,
     'notificationId': notificationId,
     'soundAsset': soundAsset,
-    'completionTime': completionTime, // NEW
+    'completionTime': completionTime,
+    'status': status,
   };
 
   factory Task.fromMap(Map<String, dynamic> m) => Task(
     id: m['id'] as int?, title: m['title'] as String, description: m['description'] as String?,
+    // Load from epoch seconds
     dueDate: m['dueDate'] != null ? DateTime.fromMillisecondsSinceEpoch((m['dueDate'] as int) * 1000) : null,
     dueTime: m['dueTime'] as String?, priority: m['priority'] ?? 0, repeatRule: m['repeatRule'] as String?,
     customDays: m['customDays'] != null && (m['customDays'] as String).isNotEmpty
@@ -81,8 +75,28 @@ class Task {
     isCompleted: (m['isCompleted'] ?? 0) == 1,
     notificationId: m['notificationId'] as int?,
     soundAsset: m['soundAsset'] ?? 'bell.mp3',
-    completionTime: m['completionTime'] as String?, // NEW
+    completionTime: m['completionTime'] as String?,
+    status: m['status'] as String? ?? 'In Progress',
   );
+
+  String get derivedStatus {
+    if (isCompleted) return 'Completed';
+    // Use manually set status for failed/aborted
+    if (status == 'Failed' || status == 'Aborted') return status!;
+    if (dueDate == null) return 'In Progress';
+
+    DateTime now = DateTime.now();
+    DateTime due = dueDate!;
+    if (dueTime != null) {
+      final parts = dueTime!.split(':');
+      due = DateTime(due.year, due.month, due.day, int.parse(parts[0]), int.parse(parts[1]));
+    } else {
+
+      due = DateTime(due.year, due.month, due.day, 23, 59, 59);
+    }
+
+    return now.isAfter(due) ? 'Delayed' : 'In Progress';
+  }
 }
 
 class Subtask {
@@ -103,10 +117,10 @@ class Subtask {
   );
 }
 
+
 // ---------------- Theme & Provider ----------------
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   static const Color primaryColor = Color(0xFF00ADB5);
   static const Color accentColor = Color(0xFFEEEEEE);
   static const Color darkBackgroundColor = Color(0xFF121212);
@@ -117,80 +131,77 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<ThemeProvider>(
-      create: (_) => ThemeProvider(),
-      child: Consumer<ThemeProvider>(builder: (context, theme, _) {
-        final isDark = theme.isDark;
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'Task Management',
-          theme: ThemeData(
+    return Consumer<ThemeProvider>(builder: (context, theme, _) {
+      final isDark = theme.isDark;
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Task Management',
+        theme: ThemeData(
+          brightness: isDark ? Brightness.dark : Brightness.light,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: primaryColor,
             brightness: isDark ? Brightness.dark : Brightness.light,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: primaryColor,
-              brightness: isDark ? Brightness.dark : Brightness.light,
-              background: isDark ? darkBackgroundColor : lightBackgroundColor,
-              surface: isDark ? darkCardColor : lightCardColor,
-              primary: primaryColor,
-            ),
-            useMaterial3: true,
-            scaffoldBackgroundColor: isDark ? darkBackgroundColor : lightBackgroundColor,
-            appBarTheme: const AppBarTheme(
+            background: isDark ? darkBackgroundColor : lightBackgroundColor,
+            surface: isDark ? darkCardColor : lightCardColor,
+            primary: primaryColor,
+          ),
+          useMaterial3: true,
+          scaffoldBackgroundColor: isDark ? darkBackgroundColor : lightBackgroundColor,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: primaryColor,
+            foregroundColor: lightTextColor,
+            elevation: 4,
+          ),
+          cardTheme: CardTheme.of(context).copyWith(
+            color: isDark ? darkCardColor : lightCardColor,
+            elevation: 5,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            backgroundColor: primaryColor,
+            foregroundColor: lightTextColor,
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
               backgroundColor: primaryColor,
               foregroundColor: lightTextColor,
-              elevation: 4,
-            ),
-            cardTheme: CardThemeData(
-              color: isDark ? darkCardColor : lightCardColor,
-              elevation: 5,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            floatingActionButtonTheme: const FloatingActionButtonThemeData(
-              backgroundColor: primaryColor,
-              foregroundColor: lightTextColor,
-            ),
-            elevatedButtonTheme: ElevatedButtonThemeData(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                foregroundColor: lightTextColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: primaryColor, width: 2),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-            inputDecorationTheme: InputDecorationTheme(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              focusedBorder: OutlineInputBorder(
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: primaryColor, width: 2),
+                side: const BorderSide(color: primaryColor, width: 2),
               ),
-              labelStyle: TextStyle(color: isDark ? accentColor : Colors.grey.shade700),
-            ),
-            bottomNavigationBarTheme: BottomNavigationBarThemeData(
-              backgroundColor: isDark ? darkCardColor : Colors.white,
-              selectedItemColor: primaryColor,
-              unselectedItemColor: isDark ? Colors.grey.shade500 : Colors.black54,
-              elevation: 8,
-            ),
-            checkboxTheme: CheckboxThemeData(
-              fillColor: MaterialStateProperty.all(primaryColor),
-              checkColor: MaterialStateProperty.all(lightTextColor),
-            ),
-            textTheme: TextTheme(
-              bodyMedium: TextStyle(color: isDark ? accentColor : Colors.black87),
-              titleMedium: TextStyle(color: isDark ? accentColor : Colors.black87),
-              titleLarge: TextStyle(color: isDark ? accentColor : Colors.black87),
-            ),
-            iconTheme: IconThemeData(
-              color: isDark ? accentColor : Colors.black87,
+              padding: const EdgeInsets.symmetric(vertical: 16),
             ),
           ),
-          home: const HomeScreen(),
-        );
-      }),
-    );
+          inputDecorationTheme: InputDecorationTheme(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: primaryColor, width: 2),
+            ),
+            labelStyle: TextStyle(color: isDark ? accentColor : Colors.grey.shade700),
+          ),
+          bottomNavigationBarTheme: BottomNavigationBarThemeData(
+            backgroundColor: isDark ? darkCardColor : Colors.white,
+            selectedItemColor: primaryColor,
+            unselectedItemColor: isDark ? Colors.grey.shade500 : Colors.black54,
+            elevation: 8,
+          ),
+          checkboxTheme: CheckboxThemeData(
+            fillColor: MaterialStateProperty.all(primaryColor),
+            checkColor: MaterialStateProperty.all(lightTextColor),
+          ),
+          textTheme: TextTheme(
+            bodyMedium: TextStyle(color: isDark ? accentColor : Colors.black87),
+            titleMedium: TextStyle(color: isDark ? accentColor : Colors.black87),
+            titleLarge: TextStyle(color: isDark ? accentColor : Colors.black87),
+          ),
+          iconTheme: IconThemeData(
+            color: isDark ? accentColor : Colors.black87,
+          ),
+        ),
+        home: const DashboardScreen(),
+      );
+    });
   }
 }
 
@@ -200,40 +211,80 @@ class ThemeProvider extends ChangeNotifier {
   void toggle() { _isDark = !_isDark; notifyListeners(); }
 }
 
-// ---------------- HomeScreen ----------------
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
+class TaskProvider extends ChangeNotifier {
+  List<Task> _tasks = [];
+  List<Task> get tasks => _tasks;
+  Map<String, int> _counts = {
+    'today': 0, 'completed': 0, 'repeated': 0,
+    'inProgress': 0, 'delayed': 0, 'failed': 0, 'aborted': 0, 'total': 0, 'pending': 0,
+  };
+
+  int get todayCount => _counts['today'] ?? 0;
+  int get completedCount => _counts['completed'] ?? 0;
+  int get repeatedCount => _counts['repeated'] ?? 0;
+  int get inProgressCount => _counts['inProgress'] ?? 0;
+  int get delayedCount => _counts['delayed'] ?? 0;
+  int get failedCount => _counts['failed'] ?? 0;
+  int get abortedCount => _counts['aborted'] ?? 0;
+  int get totalCount => _counts['total'] ?? 0;
+  int get pendingCount => _counts['pending'] ?? 0;
+
+  Future<void> loadAllTasks() async {
+    final data = await DBHelper.instance.getAllTasks();
+    _tasks = data.map((e) => Task.fromMap(e)).toList();
+
+    // Recalculate counts
+    final now = DateTime.now();
+    _counts['total'] = _tasks.length;
+
+    // Status counts based on derived status (excluding completed)
+    _counts['inProgress'] = _tasks.where((t) => t.derivedStatus == 'In Progress' && !t.isCompleted && t.status != 'Failed' && t.status != 'Aborted').length;
+    _counts['delayed'] = _tasks.where((t) => t.derivedStatus == 'Delayed' && !t.isCompleted).length;
+    // Use manual status for Failed/Aborted/Completed
+    _counts['failed'] = _tasks.where((t) => t.status == 'Failed' && !t.isCompleted).length;
+    _counts['aborted'] = _tasks.where((t) => t.status == 'Aborted' && !t.isCompleted).length;
+
+    // Pending: Not completed, not failed, not aborted
+    _counts['pending'] = _tasks.where((t) =>
+    !t.isCompleted &&
+        t.status != 'Failed' &&
+        t.status != 'Aborted'
+    ).length;
+
+
+    // Today/Completed/Repeated counts
+    _counts['today'] = _tasks.where((t) =>
+    !t.isCompleted &&
+        t.dueDate != null &&
+        t.dueDate!.year == now.year &&
+        t.dueDate!.month == now.month &&
+        t.dueDate!.day == now.day
+    ).length;
+    _counts['completed'] = _tasks.where((t) => t.isCompleted).length;
+    _counts['repeated'] = _tasks.where((t) => t.repeatRule != 'None').length;
+
+
+    notifyListeners();
+  }
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _index = 0;
-  final List<Widget> _pages = [
-    const TodayTab(),
-    const CompletedTab(),
-    const RepeatedTab(),
-  ];
-
-  // NEW: Future to hold the overall progress data for the header
-  Future<Map<String, int>>? _overallProgressFuture;
-
+// ---------------- Dashboard Screen (New Home Screen) ----------------
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
   @override
-  void initState() {
-    super.initState();
-    _loadOverallProgress();
-  }
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
 
-  // NEW: Function to load overall progress
-  void _loadOverallProgress() {
-    setState(() {
-      _overallProgressFuture = DBHelper.instance.getTaskProgress();
-    });
-  }
+class _DashboardScreenState extends State<DashboardScreen> {
+  // Use a single variable to track the current section view
+  int _currentTaskSection = 0; // 0=Today, 1=Completed, 2=Repeated
+
+  // Use a ScrollController for the 'Go to top' button functionality
+  final ScrollController _scrollController = ScrollController();
 
   // --- Utility Functions for Export/Progress ---
   Future<double> _progressFor(Task t, [bool isCompletedTab = false]) async {
-    if (isCompletedTab) return 1.0;
+    if (isCompletedTab || t.isCompleted) return 1.0;
 
     if (t.id == null) return 0.0;
     final rows = await DBHelper.instance.getSubtasksForTask(t.id!);
@@ -244,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _priorityText(int p) => p == 2 ? 'High' : (p == 1 ? 'Medium' : 'Low');
 
-  // Widget to display progress bar and percentage (NEW: Unified function)
+  // Widget to display progress bar and percentage
   Widget _buildProgressBar(double progress) {
     if (progress >= 0.0) {
       return Column(
@@ -274,8 +325,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return const SizedBox.shrink();
   }
 
-  // --- Export and Utility Methods (Same as before) ---
-
   Future<String> _getDownloadPath() async {
     if (Platform.isAndroid) {
       final dir = await getExternalStorageDirectory();
@@ -289,12 +338,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final doc = pw.Document();
     final rows = await DBHelper.instance.getAllTasks();
     final data = <List<String>>[
-      ['Title', 'Description', 'Due Date', 'Completed']
+      ['Title', 'Description', 'Due Date', 'Completed', 'Status']
     ];
     for (var r in rows) {
       final dueDate = r['dueDate'] != null
           ? DateFormat.yMMMd().format(DateTime.fromMillisecondsSinceEpoch((r['dueDate'] as int) * 1000)) : 'N/A';
-      data.add([r['title'] ?? '', r['description'] ?? '', dueDate, (r['isCompleted'] ?? 0) == 1 ? 'Yes' : 'No']);
+      data.add([r['title'] ?? '', r['description'] ?? '', dueDate, (r['isCompleted'] ?? 0) == 1 ? 'Yes' : 'No', r['status'] ?? 'N/A']);
     }
 
     doc.addPage(pw.MultiPage(pageFormat: PdfPageFormat.a4, build: (ctx) => [
@@ -319,11 +368,11 @@ class _HomeScreenState extends State<HomeScreen> {
       } else if (type == 'csv') {
         final rows = await DBHelper.instance.getAllTasks();
         final list = <List<String>>[];
-        list.add(['id', 'title', 'description', 'dueDate', 'dueTime', 'isCompleted']);
+        list.add(['id', 'title', 'description', 'dueDate', 'dueTime', 'isCompleted', 'status']);
         for (var r in rows) {
           final dueDate = r['dueDate'] != null
               ? DateFormat.yMMMd().format(DateTime.fromMillisecondsSinceEpoch((r['dueDate'] as int) * 1000)) : '';
-          list.add([r['id'].toString(), r['title'] ?? '', r['description'] ?? '', dueDate, r['dueTime'] ?? '', (r['isCompleted'] ?? 0) == 1 ? 'Yes' : 'No',]);
+          list.add([r['id'].toString(), r['title'] ?? '', r['description'] ?? '', dueDate, r['dueTime'] ?? '', (r['isCompleted'] ?? 0) == 1 ? 'Yes' : 'No', r['status'] ?? 'N/A']);
         }
         await file.writeAsString(const ListToCsvConverter().convert(list));
       }
@@ -364,11 +413,11 @@ class _HomeScreenState extends State<HomeScreen> {
       } else if (fileType == 'csv') {
         final rows = await DBHelper.instance.getAllTasks();
         final list = <List<String>>[];
-        list.add(['id', 'title', 'description', 'dueDate', 'dueTime', 'isCompleted']);
+        list.add(['id', 'title', 'description', 'dueDate', 'dueTime', 'isCompleted', 'status']);
         for (var r in rows) {
           final dueDate = r['dueDate'] != null
               ? DateFormat.yMMMd().format(DateTime.fromMillisecondsSinceEpoch((r['dueDate'] as int) * 1000)) : '';
-          list.add([r['id'].toString(), r['title'] ?? '', r['description'] ?? '', dueDate, r['dueTime'] ?? '', (r['isCompleted'] ?? 0) == 1 ? 'Yes' : 'No',]);
+          list.add([r['id'].toString(), r['title'] ?? '', r['description'] ?? '', dueDate, r['dueTime'] ?? '', (r['isCompleted'] ?? 0) == 1 ? 'Yes' : 'No', r['status'] ?? 'N/A']);
         }
         final fileName = 'tasks_share_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv';
         final file = File(p.join(dir.path, fileName));
@@ -385,85 +434,162 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
-  // --- End of Export and Utility Methods ---
 
-  // FIX: Widget to display overall progress at the top of the body
-  Widget _buildOverallProgressHeader() {
-    // Only show the header on the Today tab
-    if (_index != 0) return const SizedBox.shrink();
-
-    return FutureBuilder<Map<String, int>>(
-      future: _overallProgressFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: LinearProgressIndicator(color: MyApp.primaryColor),
-          );
-        }
-
-        final data = snapshot.data ?? {'total': 0, 'completed': 0};
-        final total = data['total']!;
-        final completed = data['completed']!;
-
-        // FIX: Use total as the denominator for the progress bar
-        final denominator = total;
-
-        final progress = (denominator > 0) ? completed / denominator : 0.0;
-        final percentage = (progress * 100).toStringAsFixed(0);
-
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          elevation: 8,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // FIX: Display goal correctly using the total tasks due today
-                Text(
-                  'Today\'s Goal: $completed of $denominator Tasks',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Theme.of(context).textTheme.titleLarge?.color,
-                  ),
-                ),
-                _buildProgressBar(progress), // Use the existing progress bar widget
-                Text(
-                  'Current Progress: $percentage%',
-                  style: const TextStyle(
-                    color: MyApp.primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<TaskProvider>(context, listen: false).loadAllTasks();
+    });
+  }
+  Widget _buildStatusCard(BuildContext context, String title, int count, IconData icon, Color color) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 30),
+            const SizedBox(height: 8),
+            Text('Total Count', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            Text(count.toString(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: MyApp.primaryColor)),
+            const SizedBox(height: 4),
+            Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyMedium?.color)),
+          ],
+        ),
+      ),
     );
   }
 
+  //  Widget for Task Information List
+  Widget _buildTaskInformationList(TaskProvider provider) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 5,
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        title: const Text('Tasks Information (All Tasks)', style: TextStyle(fontWeight: FontWeight.bold)),
+        leading: const Icon(Icons.playlist_add_check, color: MyApp.primaryColor),
+        children: [
+          _buildTaskInfoTile(
+              context,
+              'Add Task',
+              Icons.add_box_outlined,
+              MyApp.primaryColor,
+                  () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AddEditPage()),
+                );
+                if (result == true) {
+                  provider.loadAllTasks();
+                }
+              }
+          ),
+          _buildTaskInfoTile(context, 'Pending Tasks', Icons.pending_actions, Colors.orange,
+                  () => _openTaskListPage('Pending Tasks', Icons.pending_actions, Colors.orange)),
+          _buildTaskInfoTile(context, 'In Progress', Icons.watch_later_outlined, Colors.blue,
+                  () => _openTaskListPage('In Progress', Icons.watch_later_outlined, Colors.blue)),
+          _buildTaskInfoTile(context, 'Delayed', Icons.timer_off_outlined, Colors.orange,
+                  () => _openTaskListPage('Delayed', Icons.timer_off_outlined, Colors.orange)),
+          _buildTaskInfoTile(context, 'Completed', Icons.check_circle_outline, Colors.green,
+                  () => _openTaskListPage('Completed', Icons.check_circle_outline, Colors.green)),
+          _buildTaskInfoTile(context, 'Failed', Icons.cancel_outlined, Colors.red,
+                  () => _openTaskListPage('Failed', Icons.cancel_outlined, Colors.red)),
+          _buildTaskInfoTile(context, 'Aborted', Icons.stop_circle_outlined, Colors.deepPurple,
+                  () => _openTaskListPage('Aborted', Icons.stop_circle_outlined, Colors.deepPurple)),
+          _buildTaskInfoTile(context, 'Task Index (All)', Icons.list_alt, Colors.grey,
+                  () => _openTaskListPage('Task Index', Icons.list_alt, Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskInfoTile(BuildContext context, String title, IconData icon, Color color, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
+
+  void _openTaskListPage(String status, IconData icon, Color color) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => TaskListPage(status: status, icon: icon, color: color)),
+    );
+
+    Provider.of<TaskProvider>(context, listen: false).loadAllTasks();
+  }
+
+  Future<void> _markTaskCompleted(Task t) async {
+    if (t.id == null) return;
+    await DBHelper.instance.markTaskCompleted(t.id!);
+    if (t.notificationId != null) {
+      // Cancel repeating/scheduled notification when completed
+      try { await NotificationService.instance.cancelTaskNotifications(t.id!); } catch (_) {}
+    }
+    Provider.of<TaskProvider>(context, listen: false).loadAllTasks();
+  }
+
+  // NEW: Reset Task Functionality (for Completed list)
+  Future<void> _resetTask(Task t) async {
+    if (t.id == null) return;
+
+    // 1. Update DB to reset completion status and time
+    await DBHelper.instance.updateTask(t.id!, {
+      'isCompleted': 0,
+      'completionTime': null,
+      'status': 'In Progress', // Reset status to default for recalculation
+    });
+
+    // 2. Re-schedule notification if due date/time exists
+    final updatedTask = Task.fromMap((await DBHelper.instance.getTaskById(t.id!))!);
+    if (updatedTask.dueDate != null && updatedTask.dueTime != null && !updatedTask.isCompleted) {
+      try {
+        final hour = int.parse(updatedTask.dueTime!.split(':')[0]);
+        final minute = int.parse(updatedTask.dueTime!.split(':')[1]);
+
+        DateTime scheduledTime = DateTime(
+          updatedTask.dueDate!.year,
+          updatedTask.dueDate!.month,
+          updatedTask.dueDate!.day,
+          hour,
+          minute,
+        );
+        final now = DateTime.now();
+
+        if (scheduledTime.isAfter(now) || updatedTask.repeatRule != 'None') {
+          final newNotifId = await scheduleAdvancedNotification(
+            id: updatedTask.id!,
+            title: updatedTask.title,
+            body: updatedTask.description ?? 'Time to complete your task.',
+            scheduledTime: scheduledTime,
+            soundAsset: updatedTask.soundAsset,
+            repeatRule: updatedTask.repeatRule!,
+            customDays: updatedTask.customDays,
+          );
+          await DBHelper.instance.updateTask(updatedTask.id!, {'notificationId': newNotifId});
+        }
+      } catch (e) {
+        print('Error rescheduling notification on reset: $e');
+        await DBHelper.instance.updateTask(updatedTask.id!, {'notificationId': null});
+      }
+    }
+
+    Provider.of<TaskProvider>(context, listen: false).loadAllTasks();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final taskProvider = Provider.of<TaskProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Task Management'),
-        centerTitle: true,
+        title: const Text('TaskBoard Pro'),
+        centerTitle: false,
         actions: [
-          PopupMenuButton<String>(
-            onSelected: _handleDownload,
-            itemBuilder: (BuildContext context) => const [
-              PopupMenuItem<String>(value: 'pdf', child: Row(children: [Icon(Icons.picture_as_pdf, color: MyApp.primaryColor), SizedBox(width: 8), Text('Download PDF')])),
-              PopupMenuItem<String>(value: 'csv', child: Row(children: [Icon(Icons.table_chart, color: MyApp.primaryColor), SizedBox(width: 8), Text('Download CSV')])),
-            ],
-            icon: const Icon(Icons.download),
-            tooltip: 'Download Reports',
-            color: Theme.of(context).cardColor,
-          ),
-
+          // REMOVED: Download and Person Icons
           PopupMenuButton<String>(
             onSelected: _handleShare,
             itemBuilder: (BuildContext context) => const [
@@ -475,7 +601,6 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Share/Print Reports',
             color: Theme.of(context).cardColor,
           ),
-
           Consumer<ThemeProvider>(builder: (context, theme, _) => IconButton(
             icon: Icon(theme.isDark ? Icons.sunny : Icons.dark_mode),
             onPressed: () => theme.toggle(),
@@ -483,402 +608,595 @@ class _HomeScreenState extends State<HomeScreen> {
           )),
         ],
       ),
-      body: Column( // Use Column to place the header above the tab content
+      body: Stack(
         children: [
-          _buildOverallProgressHeader(), // NEW: Progress Header
-          Expanded(child: _pages[_index]),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _index, onTap: (i) => setState(() {
-        _index = i;
-        // Refresh progress only when switching to Today tab or refreshing
-        if (i == 0) _loadOverallProgress();
-      }),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.today), label: 'Today'),
-          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), label: 'Completed'),
-          BottomNavigationBarItem(icon: Icon(Icons.repeat), label: 'Repeated'),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final r = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddEditPage()));
-          if (r == true) {
-            // Force reload of all tabs and progress bar if a change was made
-            _loadOverallProgress();
-            setState(() {});
-          }
-        },
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
+          ListView(
+            controller: _scrollController,
+            children: [
+              const SizedBox(height: 16),
+              // Task Information List Section
+              _buildTaskInformationList(taskProvider),
 
-// ---------------- Today Tab ----------------
-class TodayTab extends StatefulWidget {
-  const TodayTab({super.key});
-  @override
-  State<TodayTab> createState() => _TodayTabState();
-}
-
-class _TodayTabState extends State<TodayTab> {
-  List<Task> _tasks = [];
-
-  // Access utility methods from parent state
-  _HomeScreenState get parentState => context.findAncestorStateOfType<_HomeScreenState>()!;
-
-  @override
-  void initState() { super.initState(); _load(); }
-
-  Future<void> _load() async {
-    final rows = await DBHelper.instance.getAllTasks();
-    final today = DateTime.now();
-    final todayDateString = DateFormat('yyyy-MM-dd').format(today); // e.g., '2025-11-11'
-
-    bool isTaskDueToday(Task t) {
-      if (t.dueDate == null) return false;
-
-      final todayDateOnly = DateTime(today.year, today.month, today.day);
-      final taskDateOnly = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
-      final isDueTodayOrOverdue = taskDateOnly.isAtSameMomentAs(todayDateOnly) || taskDateOnly.isBefore(todayDateOnly);
-      final wasCompletedToday = t.completionTime != null &&
-          t.completionTime!.startsWith(todayDateString);
-
-      final isRepeating = t.repeatRule != null && t.repeatRule!.isNotEmpty && t.repeatRule != 'None';
-
-      // --- Non-Repeating Tasks ---
-      if (!isRepeating) {
-        return isDueTodayOrOverdue && !t.isCompleted;
-      }
-
-      // --- Repeating Tasks ---
-      if (wasCompletedToday) {
-        return false;
-      }
-
-      if (t.repeatRule == 'Daily') return true;
-      if (t.repeatRule == 'Weekly') {
-        return t.dueDate!.weekday == today.weekday;
-      }
-      if (t.repeatRule == 'Monthly') {
-        return t.dueDate!.day == today.day;
-      }
-      if (t.repeatRule == 'CustomDay' && t.customDays != null) {
-        return t.customDays!.contains(today.weekday);
-      }
-
-      return false; // Default case
-    }
-
-    // Filter tasks due today
-    final list = rows.map((r) => Task.fromMap(r)).where((t) => isTaskDueToday(t)).toList();
-    list.sort((a, b) => b.priority.compareTo(a.priority));
-
-    setState(() => _tasks = list);
-    parentState._loadOverallProgress(); // Refresh overall progress after loading tasks
-  }
-  void _handleTaskCompletion(Task t, bool isCompleted) async {
-    if (isCompleted) {
-
-      await DBHelper.instance.completeTask(t.id!);
-      if (t.notificationId != null && (t.repeatRule == null || t.repeatRule == 'None')) {
-        try { await NotificationService.instance.cancel(t.notificationId!); } catch (_) {}
-      }
-
-    } else {
-
-      await DBHelper.instance.resetTaskStatus(t.id!);
-    }
-    await _load();
-    parentState._loadOverallProgress();
-  }
-
-
-  void _openEditPage(Task t) async {
-    final r = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AddEditPage(task: t)));
-    if (r == true) _load();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _load, color: MyApp.primaryColor,
-      child: _tasks.isEmpty
-          ? const Center(child: Text('No tasks due today!', style: TextStyle(fontSize: 18, color: Colors.grey)))
-          : ListView.builder(
-        itemCount: _tasks.length,
-        itemBuilder: (c, i) {
-          final t = _tasks[i];
-          final isRepeating = t.repeatRule != null && t.repeatRule != 'None';
-          final todayDateString = DateFormat('yyyy-MM-dd').format(DateTime.now());
-
-          // Check completion status for today
-          bool isCompletedForToday = false;
-          if (isRepeating) {
-            // Repeating: Check if completed today (based on the completionTime field starting with today's date)
-            isCompletedForToday = t.completionTime != null && t.completionTime!.startsWith(todayDateString);
-          } else {
-            // Non-repeating task uses the main isCompleted flag
-            isCompletedForToday = t.isCompleted;
-          }
-
-          final Color priorityColor = t.priority == 2 ? Colors.redAccent : (t.priority == 1 ? Colors.amber : Colors.green);
-
-          return FutureBuilder<double>(
-            // Progress is calculated normally for Today Tab (subtasks only)
-            future: parentState._progressFor(t),
-            builder: (context, snap) {
-              final progress = snap.data ?? 0.0;
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.only(left: 16, top: 8, bottom: 8, right: 8),
-                  title: Text(t.title, style: TextStyle(
-                    decoration: isCompletedForToday ? TextDecoration.lineThrough : null,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).textTheme.titleLarge?.color,
-                  )),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (t.description != null && t.description!.isNotEmpty) Text(t.description!),
-                      const SizedBox(height: 8),
-                      Text('Priority: ${parentState._priorityText(t.priority)}', style: TextStyle(color: priorityColor, fontWeight: FontWeight.w600)),
-                      parentState._buildProgressBar(progress), // Progress Bar
-                      Text('Due: ${t.dueDate != null ? DateFormat.yMMMd().format(t.dueDate!) : '—'} ${t.dueTime ?? ''}'),
-                      if (isRepeating) Text('Repeats: ${t.repeatRule}', style: const TextStyle(color: MyApp.primaryColor, fontStyle: FontStyle.italic)),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // NEW: Checkbox/Complete Button
-                      if (isCompletedForToday)
-                        IconButton(
-                          // Reset Button (Undo Completion)
-                          icon: const Icon(Icons.undo, color: Colors.grey),
-                          tooltip: 'Undo Completion',
-                          onPressed: () => _handleTaskCompletion(t, false),
-                        )
-                      else
-                        IconButton(
-                          // Mark Complete Button
-                          icon: const Icon(Icons.check_circle, color: MyApp.primaryColor),
-                          tooltip: 'Mark Complete',
-                          onPressed: () => _handleTaskCompletion(t, true),
-                        ),
-
-                      // Delete Button (Original Code)
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent),
-                        tooltip: 'Delete Task',
-                        onPressed: () async {
-                          if (t.notificationId != null) { try { await NotificationService.instance.cancel(t.notificationId!); } catch (_) {} }
-                          await DBHelper.instance.deleteTask(t.id!);
-                          _load();
-                        },
-                      ),
-                    ],
-                  ),
-                  onTap: () => _openEditPage(t),
+              const SizedBox(height: 16),
+              // Task Status Grid (Dashboard Cards)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.5,
+                  children: [
+                    _buildStatusCard(context, 'In Progress', taskProvider.inProgressCount, Icons.watch_later_outlined, Colors.blue),
+                    _buildStatusCard(context, 'Delayed', taskProvider.delayedCount, Icons.timer_off_outlined, Colors.orange),
+                    _buildStatusCard(context, 'Completed', taskProvider.completedCount, Icons.check_circle_outline, Colors.green),
+                    _buildStatusCard(context, 'Total Tasks', taskProvider.totalCount, Icons.bar_chart_sharp, Colors.grey),
+                  ],
                 ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
+              ),
 
-// ---------------- Completed Tab ----------------
-class CompletedTab extends StatefulWidget {
-  const CompletedTab({super.key});
-  @override
-  State<CompletedTab> createState() => _CompletedTabState();
-}
+              const SizedBox(height: 16),
+              // Simplified Task List for Today/Completed/Repeated (Replaces old HomeScreen tabs)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildSectionChip(0, 'Today', taskProvider.todayCount),
+                    _buildSectionChip(1, 'Completed', taskProvider.completedCount),
+                    _buildSectionChip(2, 'Repeated', taskProvider.repeatedCount),
+                  ],
+                ),
+              ),
 
-class _CompletedTabState extends State<CompletedTab> {
-  List<Task> _tasks = [];
-  _HomeScreenState get parentState => context.findAncestorStateOfType<_HomeScreenState>()!;
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: _buildCurrentTaskList(taskProvider),
+              ),
+              const SizedBox(height: 80),
+            ],
+          ),
 
-  @override
-  void initState() { super.initState(); _load(); }
-
-  Future<void> _load() async {
-    final rows = await DBHelper.instance.getCompletedTasks();
-    final list = rows.map((r) => Task.fromMap(r)).toList();
-    setState(() => _tasks = list);
-    parentState._loadOverallProgress();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _load, color: MyApp.primaryColor,
-      child: _tasks.isEmpty
-          ? const Center(child: Text('No completed tasks yet!', style: TextStyle(fontSize: 18, color: Colors.grey)))
-          : ListView.builder(
-        itemCount: _tasks.length,
-        itemBuilder: (c, i) {
-          final t = _tasks[i];
-          final Color priorityColor = t.priority == 2 ? Colors.redAccent : (t.priority == 1 ? Colors.amber : Colors.green);
-
-          return FutureBuilder<double>(
-            future: parentState._progressFor(t, true),
-            builder: (context, snap) {
-              final progress = snap.data ?? 0.0;
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: ListTile(
-                  title: Text(t.title, style: TextStyle(decoration: TextDecoration.lineThrough, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.titleMedium?.color),),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(t.description ?? ''),
-                      const SizedBox(height: 8),
-                      // NEW: Show completion time
-                      if (t.completionTime != null)
-                        Text('Completed: ${DateFormat.yMMMd().add_jm().format(DateTime.parse(t.completionTime!))}', style: const TextStyle(fontStyle: FontStyle.italic)),
-                      Text('Priority: ${parentState._priorityText(t.priority)}', style: TextStyle(color: priorityColor, fontWeight: FontWeight.w600)),
-                      parentState._buildProgressBar(progress), // Progress Bar (will be 100%)
-                    ],
-                  ),
-                  onTap: () async {
-                    final r = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AddEditPage(task: t)));
-                    if (r == true) _load();
+          Positioned(
+            left: 16,
+            bottom: 16,
+            child: Column(
+              children: [
+                FloatingActionButton(
+                  heroTag: 'goTop',
+                  onPressed: () {
+                    _scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeInOut,
+                    );
                   },
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // RESET Button (Mark as Uncompleted/Undo)
-                      IconButton(
-                        icon: const Icon(Icons.undo, color: MyApp.primaryColor), tooltip: 'Mark as Uncompleted',
-                        onPressed: () async {
-                          await DBHelper.instance.resetTaskStatus(t.id!);
-
-                          _load();
-                          parentState._loadOverallProgress();
-                        },
-                      ),
-
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent), tooltip: 'Delete Task',
-                        onPressed: () async {
-                          if (t.notificationId != null) { try { await NotificationService.instance.cancel(t.notificationId!); } catch (_) {} }
-                          await DBHelper.instance.deleteTask(t.id!);
-                          _load();
-                          parentState._loadOverallProgress();
-                        },
-                      ),
-                    ],
-                  ),
+                  backgroundColor: MyApp.primaryColor,
+                  child: const Icon(Icons.rocket_launch, color: MyApp.lightTextColor),
                 ),
-              );
-            },
+                const SizedBox(height: 4),
+                const Text('Go to Top', style: TextStyle(color: MyApp.primaryColor, fontSize: 10, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+
+          // Search Button
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: FloatingActionButton(
+              heroTag: 'search',
+              onPressed: () {
+                showSearch(context: context, delegate: TaskSearchDelegate(
+                    allTasks: taskProvider.tasks,
+                    onTaskTap: (task) async {
+                      final result = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AddEditPage(task: task)));
+                      if (result == true) taskProvider.loadAllTasks();
+                    }
+                ));
+              },
+              backgroundColor: MyApp.primaryColor,
+              child: const Icon(Icons.search, color: MyApp.lightTextColor),
+            ),
+          ),
+        ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  Widget _buildSectionChip(int index, String label, int count) {
+    final isSelected = _currentTaskSection == index;
+    return ChoiceChip(
+      label: Text('$label ($count)'),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) setState(() => _currentTaskSection = index);
+      },
+      selectedColor: MyApp.primaryColor,
+      checkmarkColor: MyApp.lightTextColor,
+      backgroundColor: Theme.of(context).cardColor,
+      labelStyle: TextStyle(color: isSelected ? MyApp.lightTextColor : Theme.of(context).textTheme.bodyMedium?.color),
+    );
+  }
+
+  Widget _buildCurrentTaskList(TaskProvider provider) {
+    List<Task> list;
+    String statusFilter;
+    bool isCompletedSection = false;
+
+    switch (_currentTaskSection) {
+      case 0: // Today
+        list = provider._tasks.where((t) {
+          final now = DateTime.now();
+          return !t.isCompleted &&
+              t.status != 'Failed' &&
+              t.status != 'Aborted' &&
+              t.dueDate != null &&
+              t.dueDate!.year == now.year &&
+              t.dueDate!.month == now.month &&
+              t.dueDate!.day == now.day;
+        }).toList();
+        statusFilter = 'Today';
+        break;
+      case 1: // Completed
+        list = provider._tasks.where((t) => t.isCompleted).toList();
+        statusFilter = 'Completed';
+        isCompletedSection = true;
+        break;
+      case 2: // Repeated
+        list = provider._tasks.where((t) => t.repeatRule != 'None' && !t.isCompleted).toList();
+        statusFilter = 'Repeated';
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+
+    if (list.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text('No $statusFilter tasks found.', style: const TextStyle(fontSize: 16, color: Colors.grey)),
+        ),
+      );
+    }
+
+    return Column(
+      children: list.map((t) => FutureBuilder<double>(
+        future: _progressFor(t, t.isCompleted),
+        builder: (context, snap) {
+          final progress = snap.data ?? 0.0;
+          return Card(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            child: ListTile(
+              title: Text(t.title, style: TextStyle(
+                  decoration: t.isCompleted ? TextDecoration.lineThrough : null,
+                  fontWeight: FontWeight.bold
+              )),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Priority: ${_priorityText(t.priority)}'),
+                  if (t.dueDate != null)
+                    Text('Due: ${DateFormat.yMMMd().format(t.dueDate!)}${t.dueTime != null ? ' at ${t.dueTime}' : ''}'),
+                  // Show derived status (In Progress, Delayed)
+                  Text('Status: ${t.derivedStatus}', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+                  _buildProgressBar(progress),
+                ],
+              ),
+              trailing: isCompletedSection
+                  ? IconButton( // NEW: Reset option for completed tasks
+                icon: const Icon(Icons.undo, color: Colors.blue),
+                onPressed: () => _resetTask(t),
+                tooltip: 'Reset Task (Mark Incomplete)',
+              )
+                  : IconButton(
+                icon: const Icon(Icons.check_circle_outline, color: Colors.green),
+                onPressed: () => _markTaskCompleted(t),
+                tooltip: 'Mark Completed',
+              ),
+              onTap: () async {
+                final r = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AddEditPage(task: t)));
+                if (r == true) provider.loadAllTasks();
+              },
+            ),
           );
         },
-      ),
+      )).toList(),
     );
   }
 }
 
-// ---------------- Repeated Tab ----------------
-class RepeatedTab extends StatefulWidget {
-  const RepeatedTab({super.key});
+// ---------------- Task List Page (For detailed status views) ----------------
+class TaskListPage extends StatefulWidget {
+  final String status;
+  final IconData icon;
+  final Color color;
+  const TaskListPage({super.key, required this.status, required this.icon, required this.color});
+
   @override
-  State<RepeatedTab> createState() => _RepeatedTabState();
+  State<TaskListPage> createState() => _TaskListPageState();
 }
 
-class _RepeatedTabState extends State<RepeatedTab> {
+class _TaskListPageState extends State<TaskListPage> {
   List<Task> _tasks = [];
-
-  // Access utility methods from parent state
-  _HomeScreenState get parentState => context.findAncestorStateOfType<_HomeScreenState>()!;
+  bool _isLoading = true;
 
   @override
-  void initState() { super.initState(); _load(); }
-
-  Future<void> _load() async {
-    final rows = await DBHelper.instance.getAllTasks();
-    final list = rows.map((r) => Task.fromMap(r)).where((t) => t.repeatRule != null && t.repeatRule!.isNotEmpty && t.repeatRule != 'None').toList();
-    setState(() => _tasks = list);
-    parentState._loadOverallProgress(); // Refresh overall progress
+  void initState() {
+    super.initState();
+    _loadTasks();
   }
 
-  String _daysToString(List<int> days) {
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days.map((d) => dayNames[d - 1]).join(', ');
+  Future<void> _loadTasks() async {
+    setState(() => _isLoading = true);
+    List<Task> allTasks = (await DBHelper.instance.getAllTasks()).map((r) => Task.fromMap(r)).toList();
+    List<Task> filteredTasks = [];
+
+    switch (widget.status) {
+      case 'Task Index':
+        filteredTasks = allTasks;
+        break;
+      case 'Completed':
+        filteredTasks = allTasks.where((t) => t.isCompleted).toList();
+        break;
+      case 'Pending Tasks':
+        filteredTasks = allTasks.where((t) =>
+        !t.isCompleted &&
+            t.status != 'Failed' &&
+            t.status != 'Aborted'
+        ).toList();
+        break;
+      case 'In Progress':
+        filteredTasks = allTasks.where((t) => t.derivedStatus == 'In Progress' && !t.isCompleted && t.status != 'Failed' && t.status != 'Aborted').toList();
+        break;
+      case 'Delayed':
+        filteredTasks = allTasks.where((t) => t.derivedStatus == 'Delayed' && !t.isCompleted).toList();
+        break;
+      case 'Failed':
+        filteredTasks = allTasks.where((t) => t.status == 'Failed' && !t.isCompleted).toList();
+        break;
+      case 'Aborted':
+        filteredTasks = allTasks.where((t) => t.status == 'Aborted' && !t.isCompleted).toList();
+        break;
+      default:
+
+        filteredTasks = [];
+        break;
+    }
+
+    setState(() {
+      _tasks = filteredTasks;
+      _isLoading = false;
+    });
   }
 
-  void _openEditPage(Task t) async {
-    final r = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AddEditPage(task: t)));
-    if (r == true) _load();
+  String _priorityText(int p) => p == 2 ? 'High' : (p == 1 ? 'Medium' : 'Low');
+
+  Future<double> _progressFor(Task t) async {
+    if (t.isCompleted) return 1.0;
+    if (t.id == null) return 0.0;
+    final rows = await DBHelper.instance.getSubtasksForTask(t.id!);
+    if (rows.isEmpty) return 0.0;
+    final done = rows.where((r) => (r['isDone'] ?? 0) == 1).length;
+    return done / rows.length;
+  }
+
+  Widget _buildProgressBar(double progress) {
+    if (progress >= 0.0) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: progress,
+              color: MyApp.primaryColor,
+              minHeight: 6,
+              backgroundColor: MyApp.primaryColor.withOpacity(0.3),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Text(
+              'Progress: ${(progress * 100).toStringAsFixed(0)}%',
+              style: const TextStyle(color: MyApp.primaryColor, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _load, color: MyApp.primaryColor,
-      child: _tasks.isEmpty
-          ? const Center(child: Text('No repeating tasks!', style: TextStyle(fontSize: 18, color: Colors.grey)))
-          : ListView.builder(
-        itemCount: _tasks.length,
-        itemBuilder: (c, i) {
-          final t = _tasks[i];
-          String repeatInfo = 'Repeats: ${t.repeatRule}';
-          if (t.repeatRule == 'CustomDay' && t.customDays != null && t.customDays!.isNotEmpty) {
-            repeatInfo += ' (${_daysToString(t.customDays!)})';
-          }
-          final Color priorityColor = t.priority == 2 ? Colors.redAccent : (t.priority == 1 ? Colors.amber : Colors.green);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.status),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: MyApp.lightTextColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: MyApp.primaryColor))
+          : RefreshIndicator(
+        onRefresh: _loadTasks,
+        color: MyApp.primaryColor,
+        child: _tasks.isEmpty
+            ? Center(child: Text('No ${widget.status} tasks.', style: const TextStyle(fontSize: 18, color: Colors.grey)))
+            : ListView.builder(
+          itemCount: _tasks.length,
+          itemBuilder: (c, i) {
+            final t = _tasks[i];
+            final Color priorityColor = t.priority == 2 ? Colors.redAccent : (t.priority == 1 ? Colors.amber : Colors.green);
 
-          return FutureBuilder<double>(
-            // FIX 3: Explicitly pass false/omit parameter to ensure subtask progress is shown
-            future: parentState._progressFor(t, false),
-            builder: (context, snap) {
-              final progress = snap.data ?? 0.0;
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: ListTile(
-                  title: Text(t.title, style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.titleMedium?.color)),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Starting from: ${t.dueDate != null ? DateFormat.yMMMd().format(t.dueDate!) : '—'}'),
-                      Text('Priority: ${parentState._priorityText(t.priority)}', style: TextStyle(color: priorityColor, fontWeight: FontWeight.w600)),
-                      Text(repeatInfo, style: const TextStyle(color: MyApp.primaryColor, fontStyle: FontStyle.italic)),
-                      parentState._buildProgressBar(progress), // Progress Bar
-                    ],
+            return FutureBuilder<double>(
+              future: _progressFor(t),
+              builder: (context, snap) {
+                final progress = snap.data ?? 0.0;
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: ListTile(
+                    leading: Icon(widget.icon, color: widget.color),
+                    title: Text(t.title, style: TextStyle(
+                        decoration: t.isCompleted ? TextDecoration.lineThrough : null,
+                        fontWeight: FontWeight.bold
+                    )),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(t.description ?? ''),
+                        if (t.dueDate != null)
+                          Text('Due: ${DateFormat.yMMMd().format(t.dueDate!)}${t.dueTime != null ? ' at ${t.dueTime}' : ''}'), // NEW: Show time
+                        Text('Priority: ${_priorityText(t.priority)}', style: TextStyle(color: priorityColor, fontWeight: FontWeight.w600)),
+                        Text('Status: ${t.derivedStatus}', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+                        _buildProgressBar(progress),
+                      ],
+                    ),
+                    trailing: t.isCompleted ? const Icon(Icons.check_circle, color: Colors.green) : null,
+                    onTap: () async {
+                      final r = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AddEditPage(task: t)));
+                      if (r == true) _loadTasks();
+                    },
                   ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // No completion/reset button here, as the task is always active in the Repeated tab
-                      const Icon(Icons.repeat, color: MyApp.primaryColor),
-                      // Delete Button (Original Code)
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.redAccent), tooltip: 'Delete Task',
-                        onPressed: () async {
-                          if (t.notificationId != null) { try { await NotificationService.instance.cancel(t.notificationId!); } catch (_) {} }
-                          await DBHelper.instance.deleteTask(t.id!);
-                          _load();
-                          parentState._loadOverallProgress();
-                        },
-                      ),
-                    ],
-                  ),
-                  onTap: () => _openEditPage(t),
-                ),
-              );
-            },
-          );
-        },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
 }
+
+// ---------------- Search Delegate ----------------
+class StatusFilter {
+  final String statusName;
+  final String queryKey;
+  final IconData icon;
+  final Color color;
+
+  const StatusFilter(this.statusName, this.queryKey, this.icon, this.color);
+}
+
+// List of all status filters for the search suggestions
+const List<StatusFilter> taskStatusFilters = [
+  StatusFilter('Pending Tasks', 'pending', Icons.pending_actions, Colors.orange),
+  StatusFilter('In Progress', 'in progress', Icons.watch_later_outlined, Colors.blue),
+  StatusFilter('Delayed', 'delayed', Icons.timer_off_outlined, Colors.orange),
+  StatusFilter('Completed', 'completed', Icons.check_circle_outline, Colors.green),
+  StatusFilter('Failed', 'failed', Icons.cancel_outlined, Colors.red),
+  StatusFilter('Aborted', 'aborted', Icons.stop_circle_outlined, Colors.deepPurple),
+  StatusFilter('Task Index (All)', 'all tasks', Icons.list_alt, Colors.grey),
+];
+
+
+class TaskSearchDelegate extends SearchDelegate<Task?> {
+  final List<Task> allTasks;
+  final Function(Task) onTaskTap;
+
+  TaskSearchDelegate({required this.allTasks, required this.onTaskTap});
+
+  @override
+  ThemeData appBarTheme(BuildContext context) {
+    return Theme.of(context).copyWith(
+      appBarTheme: const AppBarTheme(
+        backgroundColor: MyApp.primaryColor,
+        foregroundColor: MyApp.lightTextColor,
+        elevation: 4,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        hintStyle: TextStyle(color: MyApp.lightTextColor.withOpacity(0.7)),
+        border: InputBorder.none,
+      ),
+    );
+  }
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear, color: MyApp.lightTextColor),
+        onPressed: () {
+          if (query.isEmpty) {
+            close(context, null);
+          } else {
+            query = '';
+          }
+        },
+      )
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back, color: MyApp.lightTextColor),
+      onPressed: () {
+        close(context, null);
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    List<Task> results = _filterTasks(allTasks, query);
+    final matchedStatus = taskStatusFilters.firstWhere(
+            (f) => f.queryKey == query.toLowerCase(),
+        orElse: () => const StatusFilter('', '', Icons.task_alt, Colors.grey)
+    );
+
+    if (matchedStatus.queryKey.isNotEmpty) {
+      return _buildTaskList(context, results, matchedStatus.icon, matchedStatus.color);
+    }
+
+    // Default search results
+    return _buildTaskList(context, results, Icons.task_alt, Theme.of(context).iconTheme.color!);
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    if (query.isEmpty) {
+      return ListView(
+        children: taskStatusFilters.map((filter) {
+          return ListTile(
+            leading: Icon(filter.icon, color: filter.color),
+            title: Text(filter.statusName, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
+            onTap: () {
+              query = filter.queryKey;
+              showResults(context);
+            },
+          );
+        }).toList(),
+      );
+    }
+    final suggestions = allTasks.where((task) =>
+    task.title.toLowerCase().contains(query.toLowerCase()) ||
+        (task.description?.toLowerCase().contains(query.toLowerCase()) ?? false)
+    ).toList();
+    final displaySuggestions = suggestions.take(10).toList();
+
+    return _buildTaskList(context, displaySuggestions, Icons.search, MyApp.primaryColor);
+  }
+  List<Task> _filterTasks(List<Task> tasks, String query) {
+    final lowerQuery = query.toLowerCase();
+
+    switch (lowerQuery) {
+      case 'pending':
+        return tasks.where((t) =>
+        !t.isCompleted &&
+            t.status != 'Failed' &&
+            t.status != 'Aborted'
+        ).toList();
+      case 'in progress':
+        return tasks.where((t) => t.derivedStatus == 'In Progress' && !t.isCompleted && t.status != 'Failed' && t.status != 'Aborted').toList();
+      case 'delayed':
+        return tasks.where((t) => t.derivedStatus == 'Delayed' && !t.isCompleted).toList();
+      case 'completed':
+        return tasks.where((t) => t.isCompleted).toList();
+      case 'failed':
+        return tasks.where((t) => t.status == 'Failed' && !t.isCompleted).toList();
+      case 'aborted':
+        return tasks.where((t) => t.status == 'Aborted' && !t.isCompleted).toList();
+      case 'all tasks':
+        return tasks;
+      default:
+        return tasks.where((task) =>
+        task.title.toLowerCase().contains(lowerQuery) ||
+            (task.description?.toLowerCase().contains(lowerQuery) ?? false)
+        ).toList();
+    }
+  }
+
+  Widget _buildTaskList(BuildContext context, List<Task> tasks, IconData defaultIcon, Color defaultIconColor) {
+    if (tasks.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text('No tasks found for "$query".', style: const TextStyle(fontSize: 16, color: Colors.grey)),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: tasks.length,
+      itemBuilder: (context, index) {
+        final task = tasks[index];
+        IconData icon;
+        Color iconColor;
+
+        if (task.isCompleted) {
+          icon = Icons.check_circle;
+          iconColor = Colors.green;
+        } else if (task.status == 'Failed') {
+          icon = Icons.cancel_outlined;
+          iconColor = Colors.red;
+        } else if (task.status == 'Aborted') {
+          icon = Icons.stop_circle_outlined;
+          iconColor = Colors.deepPurple;
+        } else if (task.derivedStatus == 'Delayed') {
+          icon = Icons.timer_off_outlined;
+          iconColor = Colors.orange;
+        } else {
+          // Use priority icon for In Progress/Pending if specific status icon isn't set
+          switch (task.priority) {
+            case 2: // High
+              icon = Icons.priority_high;
+              iconColor = Colors.redAccent;
+              break;
+            case 1: // Medium
+              icon = Icons.warning_amber;
+              iconColor = Colors.amber;
+              break;
+            case 0: // Low/Default
+            default:
+              icon = Icons.task_alt;
+              iconColor = MyApp.primaryColor;
+              break;
+          }
+        }
+
+        String subtitleText = task.description ?? 'No description';
+        if (task.dueDate != null) {
+          subtitleText += ' | Due: ${DateFormat.yMMMd().format(task.dueDate!)}${task.dueTime != null ? ' at ${task.dueTime}' : ''}'; // NEW: Show time
+        }
+
+
+        return ListTile(
+          leading: Icon(icon, color: iconColor),
+          title: Text(
+            task.title,
+            style: TextStyle(
+              decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(subtitleText),
+              // Show the dynamic derived status
+              Text('Status: ${task.derivedStatus}', style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+            ],
+          ),
+          onTap: () {
+            onTaskTap(task);
+            close(context, task);
+          },
+        );
+      },
+    );
+  }
+}
+
 
 // ---------------- Add/Edit Page ----------------
 class AddEditPage extends StatefulWidget {
@@ -898,14 +1216,20 @@ class _AddEditPageState extends State<AddEditPage> {
   String _repeatRule = 'None';
   List<int> _customDays = [];
   late String _soundAsset;
+  late String _status;
   List<Subtask> _subtasks = [];
   final TextEditingController _subtaskController = TextEditingController();
+
+  static const List<String> manualStatuses = ['Completed', 'Failed', 'Aborted'];
+
 
   @override
   void initState() {
     super.initState();
     final task = widget.task;
     _soundAsset = availableSounds.first;
+    _status = 'In Progress';
+
     if (task != null) {
       _title = task.title;
       _description = task.description;
@@ -918,6 +1242,12 @@ class _AddEditPageState extends State<AddEditPage> {
       _repeatRule = task.repeatRule ?? 'None';
       _customDays = task.customDays ?? [];
       _soundAsset = task.soundAsset;
+      if (manualStatuses.contains(task.status)) {
+        _status = task.status!;
+      } else {
+        _status = 'In Progress';
+      }
+
       if (task.id != null) {
         _loadSubtasks(task.id!);
       }
@@ -939,8 +1269,6 @@ class _AddEditPageState extends State<AddEditPage> {
       _subtasks = rows.map((r) => Subtask.fromMap(r)).toList();
     });
   }
-
-  // --- Date/Time Picker Handlers ---
 
   Future<void> _pickDate() async {
     final date = await showDatePicker(
@@ -985,20 +1313,16 @@ class _AddEditPageState extends State<AddEditPage> {
     });
   }
 
-  // --- SAVE TASK FUNCTION (Including Notification Logic) ---
+  // --- SAVE TASK FUNCTION ---
   Future<void> _saveTask() async {
-    // FIX 3: Custom Day Validation
-    if (_repeatRule == 'CustomDay' && _customDays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one custom day for repetition.')),
-      );
-      return;
-    }
-
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
     final isEditing = widget.task != null;
+
+    // Determine completion status based on manual _status selection
+    final bool markAsCompleted = _status == 'Completed';
+
     Task taskToSave = Task(
       id: isEditing ? widget.task!.id : null,
       title: _title,
@@ -1007,25 +1331,25 @@ class _AddEditPageState extends State<AddEditPage> {
       dueTime: _dueTime != null ? '${_dueTime!.hour.toString().padLeft(2, '0')}:${_dueTime!.minute.toString().padLeft(2, '0')}' : null,
       priority: _priority,
       repeatRule: _repeatRule,
-      // Pass null if customDays is empty or rule is not CustomDay
       customDays: _repeatRule == 'CustomDay' && _customDays.isNotEmpty ? _customDays : null,
-      isCompleted: isEditing ? widget.task!.isCompleted : false,
+      // If manually marked completed, use that. Otherwise, retain previous state unless editing.
+      isCompleted: markAsCompleted,
       notificationId: isEditing ? widget.task!.notificationId : null,
       soundAsset: _soundAsset,
-      completionTime: isEditing ? widget.task!.completionTime : null, // Preserve completion time if editing
+      completionTime: markAsCompleted ? DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()) : null,
+      // Status is the selected manual status, or 'In Progress' if no manual status was selected.
+      status: _status,
     );
 
     // 1. Cancel existing notification
-    if (taskToSave.notificationId != null) {
+    if (taskToSave.id != null) {
       try {
-        await NotificationService.instance.cancel(taskToSave.notificationId!);
-        taskToSave.notificationId = null; // Clear old ID
+        await NotificationService.instance.cancelTaskNotifications(taskToSave.id!);
+        taskToSave.notificationId = null; // Prepare for potential update
       } catch (e) {
         print('Error canceling old notification: $e');
       }
     }
-
-    // 2. Save/Update task in DB to get a valid ID if it's new
     int taskId;
     if (isEditing) {
       final Map<String, dynamic> updateMap = taskToSave.toMap();
@@ -1036,9 +1360,7 @@ class _AddEditPageState extends State<AddEditPage> {
       taskId = await DBHelper.instance.insertTask(taskToSave.toMap());
       taskToSave.id = taskId;
     }
-
-    // 3. Handle NEW Notification Scheduling
-    if (taskToSave.dueDate != null && taskToSave.dueTime != null && !taskToSave.isCompleted) {
+    if (taskToSave.dueDate != null && taskToSave.dueTime != null && !taskToSave.isCompleted && taskToSave.status != 'Failed' && taskToSave.status != 'Aborted') {
       try {
         final hour = int.parse(taskToSave.dueTime!.split(':')[0]);
         final minute = int.parse(taskToSave.dueTime!.split(':')[1]);
@@ -1054,6 +1376,7 @@ class _AddEditPageState extends State<AddEditPage> {
         final now = DateTime.now();
         final isRepeating = taskToSave.repeatRule != null && taskToSave.repeatRule != 'None';
 
+        // Calling the correctly imported function from notification_service.dart
         if (scheduledTime.isAfter(now) || isRepeating) {
           final newNotifId = await scheduleAdvancedNotification(
             id: taskId,
@@ -1061,47 +1384,79 @@ class _AddEditPageState extends State<AddEditPage> {
             body: taskToSave.description ?? 'Time to complete your task.',
             scheduledTime: scheduledTime,
             soundAsset: taskToSave.soundAsset,
+            repeatRule: taskToSave.repeatRule!,
+            customDays: taskToSave.customDays,
           );
-          // Update the task in DB with the new notification ID
           await DBHelper.instance.updateTask(taskId, {'notificationId': newNotifId});
         }
       } catch (e) {
         print('Error scheduling notification: $e');
-        // If scheduling fails, ensure notificationId is null in DB
         await DBHelper.instance.updateTask(taskId, {'notificationId': null});
       }
+    } else if (taskToSave.id != null) {
+      // Ensure notificationId is explicitly cleared if criteria are no longer met
+      await DBHelper.instance.updateTask(taskId, {'notificationId': null});
     }
+
+    // 4. Handle Subtask Saving
     final existingSubtaskRows = await DBHelper.instance.getSubtasksForTask(taskId);
     final existingSubtaskIds = existingSubtaskRows.map((e) => e['id'] as int).toSet();
     final currentSubtaskIds = <int>{};
 
-    // B. Insert/Update current subtasks
     for (var subtask in _subtasks) {
       final subtaskMap = subtask.toMap();
       subtaskMap['taskId'] = taskId;
 
       if (subtask.id != null && existingSubtaskIds.contains(subtask.id!)) {
-        // Update existing subtask
         await DBHelper.instance.updateSubtask(subtask.id!, subtaskMap);
         currentSubtaskIds.add(subtask.id!);
       } else {
-        // Insert new subtask
         final newId = await DBHelper.instance.insertSubtask(subtaskMap);
         currentSubtaskIds.add(newId);
       }
     }
 
-    // C. Delete subtasks that were removed from the UI list
     final deletedIds = existingSubtaskIds.difference(currentSubtaskIds);
     for (var id in deletedIds) {
-      await DBHelper.instance.deleteSubtask(id); // Using the new deleteSubtask
+      await DBHelper.instance.deleteSubtask(id);
     }
 
-
-    if (mounted) Navigator.pop(context, true);
+    if (mounted) {
+      Provider.of<TaskProvider>(context, listen: false).loadAllTasks();
+      Navigator.pop(context, true);
+    }
   }
 
-  // --- UI Pickers / Builders ---
+  // UPDATED: Status Picker Widget (Completely removes 'In Progress' from options)
+  Widget _buildStatusPicker() {
+    final bool isManualStatusSet = manualStatuses.contains(_status);
+    String? displayValue = isManualStatusSet ? _status : null;
+
+    return DropdownButtonFormField<String>(
+      decoration: const InputDecoration(
+        labelText: 'Manual Status',
+        hintText: 'Select a final status (Current: In Progress/Delayed)',
+      ),
+      value: displayValue,
+      items: manualStatuses.map((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        if (newValue != null) setState(() {
+          _status = newValue;
+          if (widget.task != null) {
+            // Update the isCompleted flag if Completed is selected
+            widget.task!.isCompleted = newValue == 'Completed';
+          }
+        });
+      },
+      style: TextStyle(color: isManualStatusSet ? MyApp.primaryColor : Theme.of(context).textTheme.bodyMedium?.color, fontWeight: FontWeight.bold),
+    );
+  }
+
 
   Widget _buildDatePicker() => Row(
     children: [
@@ -1130,16 +1485,17 @@ class _AddEditPageState extends State<AddEditPage> {
   );
 
   Widget _buildRepeatRule() {
+    const repeatOptions = ['None', 'Daily', 'CustomDay'];
+
     return DropdownButtonFormField<String>(
       decoration: const InputDecoration(labelText: 'Repeat Rule'),
       value: _repeatRule,
-      items: const ['None', 'Daily', 'Weekly', 'Monthly', 'CustomDay'].map((String value) {
+      items: repeatOptions.map((String value) {
         return DropdownMenuItem<String>(value: value, child: Text(value));
       }).toList(),
       onChanged: (String? newValue) {
         if (newValue != null) setState(() {
           _repeatRule = newValue;
-          // Clear custom days if switching away from CustomDay
           if (newValue != 'CustomDay') _customDays = [];
         });
       },
@@ -1150,17 +1506,10 @@ class _AddEditPageState extends State<AddEditPage> {
     if (_repeatRule != 'CustomDay') return const SizedBox.shrink();
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // Hint for custom day selection
-    final bool hasSelectionError = _repeatRule == 'CustomDay' && _customDays.isEmpty && _formKey.currentState?.validate() == false;
-
+    // NOTE: Removed validation/error message display
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (hasSelectionError)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8.0),
-            child: Text('Please select at least one day.', style: TextStyle(color: Colors.red, fontSize: 12)),
-          ),
         Wrap(
           spacing: 8.0,
           children: List.generate(7, (index) {
@@ -1295,10 +1644,13 @@ class _AddEditPageState extends State<AddEditPage> {
             tooltip: 'Delete Task',
             onPressed: () async {
               if (widget.task!.notificationId != null) {
-                await NotificationService.instance.cancel(widget.task!.notificationId!);
+                await NotificationService.instance.cancelTaskNotifications(widget.task!.id!);
               }
               await DBHelper.instance.deleteTask(widget.task!.id!);
-              if (mounted) Navigator.pop(context, true);
+              if (mounted) {
+                Provider.of<TaskProvider>(context, listen: false).loadAllTasks();
+                Navigator.pop(context, true);
+              }
             },
           )
         ] : null,
@@ -1323,6 +1675,8 @@ class _AddEditPageState extends State<AddEditPage> {
               textInputAction: TextInputAction.done,
               onSaved: (v) => _description = v!.trim().isEmpty ? null : v.trim(),
             ),
+            const SizedBox(height: 16),
+            _buildStatusPicker(), // UPDATED: Status Picker
             const SizedBox(height: 16),
             _buildPriorityPicker(),
             const SizedBox(height: 16),
