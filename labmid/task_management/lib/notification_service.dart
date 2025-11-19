@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:android_intent_plus/android_intent.dart';
 
 class NotificationService {
+  // Private constructor for singleton pattern
   NotificationService._private();
   static final NotificationService instance = NotificationService._private();
 
@@ -18,7 +19,7 @@ class NotificationService {
 
   /// Initialize the notification plugin
   Future<void> init() async {
-    // Ensure timezones are initialized
+    // 1. Initialize Time Zones
     tzdata.initializeTimeZones();
     try {
       tz.setLocalLocation(tz.local);
@@ -27,6 +28,7 @@ class NotificationService {
       tz.setLocalLocation(tz.UTC);
     }
 
+    // 2. Platform-Specific Initialization Settings
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const iosInit = DarwinInitializationSettings(
@@ -37,8 +39,9 @@ class NotificationService {
 
     const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
 
+    // 3. Request Permissions (Runtime)
     if (!kIsWeb && Platform.isAndroid) {
-      // 1. Request runtime notification permission (Android 13+/API 33)
+      // Request runtime notification permission (Android 13+/API 33)
       final androidImplementation =
       _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       await androidImplementation?.requestNotificationsPermission();
@@ -47,7 +50,7 @@ class NotificationService {
         await Permission.notification.request();
       }
 
-      // 2. Request exact alarm permission (Android 12+/API 31+)
+      // Request exact alarm permission (Android 12+/API 31+) for reliable scheduling
       if (await Permission.scheduleExactAlarm.isDenied) {
         debugPrint('Exact Alarm permission denied. Trying to request.');
         final result = await Permission.scheduleExactAlarm.request();
@@ -58,6 +61,7 @@ class NotificationService {
       }
     }
 
+    // 4. Initialize the Plugin
     await _plugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
@@ -122,6 +126,7 @@ class NotificationService {
   }) async {
     final tzDate = tz.TZDateTime.from(scheduledDate, tz.local);
 
+    // Safety check to prevent scheduling in the immediate past
     if (tzDate.isBefore(tz.TZDateTime.now(tz.local).add(const Duration(seconds: 1)))) {
       debugPrint('Cannot schedule notification $id: Date is in the past.');
       return -1;
@@ -218,9 +223,10 @@ class NotificationService {
   }) async {
     if (customDays == null || customDays.isEmpty) return -1;
 
+    // Use task ID * 100 as base to generate unique IDs for 7 days
     final baseId = id * 100;
 
-    // Clear old schedules
+    // Clear old schedules for this base ID
     for (int i = 1; i <= 7; i++) {
       await cancel(baseId + i);
     }
@@ -244,6 +250,7 @@ class NotificationService {
     return id;
   }
 
+  // Helper to get the next instance of a specific time (today or tomorrow)
   tz.TZDateTime _nextInstanceOfDateAndTime(DateTime scheduledTime) {
     final now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate = tz.TZDateTime(
@@ -261,10 +268,12 @@ class NotificationService {
     return scheduledDate;
   }
 
+  // Helper to get the next instance of a time on a specific day of the week
   tz.TZDateTime _nextInstanceOfTimeOnDay(DateTime scheduledTime, int dayOfWeek) {
     tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    // dayOfWeek is 1 for Monday, 7 for Sunday (TZDateTime.weekday)
     int diff = dayOfWeek - now.weekday;
-    if (diff <= 0) diff += 7;
+    if (diff <= 0) diff += 7; // Target is today or in the past, so schedule for next week
 
     tz.TZDateTime nextDay = now.add(Duration(days: diff));
     return tz.TZDateTime(
@@ -302,6 +311,7 @@ class NotificationService {
     await _plugin.cancel(id);
   }
 
+  /// Cancels the main notification and the 7 potential daily repeat notifications
   Future<void> cancelTaskNotifications(int taskId) async {
     await cancel(taskId);
     final baseId = taskId * 100;
@@ -312,7 +322,7 @@ class NotificationService {
   }
 }
 
-// Global helper
+// Global helper function to simplify usage outside the class
 Future<int> scheduleAdvancedNotification({
   required int id,
   required String title,
