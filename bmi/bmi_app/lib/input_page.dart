@@ -19,14 +19,14 @@ class _InputPageState extends State<InputPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-          Text(
-          'Body Text Example', // Your text goes here
-          style: TextStyle(
-            fontSize: 24.0,
-            // Setting color explicitly ensures it is visible
-            color: Colors.white,
-          ),
-          ),
+            Text(
+              'Body Text Example', // Your text goes here
+              style: TextStyle(
+                fontSize: 24.0,
+                // Setting color explicitly ensures it is visible
+                color: Colors.white,
+              ),
+            ),
           ],
 
         ),
