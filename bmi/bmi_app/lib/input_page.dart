@@ -3,6 +3,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'IconeTextFile.dart';
 import 'ContainerFile.dart';
 import 'constantFile.dart';
+import 'resultfile.dart';
+
 
 enum Gender {
   male,
@@ -114,7 +116,7 @@ class _InputPageState extends State<InputPage> {
             ),
           ),
 
-          /// 3. Weight + Age Section (Final Fixed Structure)
+          /// 3. Weight + Age Section
           Expanded(
             child: Row(
               children: <Widget>[
@@ -123,9 +125,9 @@ class _InputPageState extends State<InputPage> {
                   child: RepeatContainerCode(
                     colors: const Color(0xFF1D1E33),
                     cardWidget: SingleChildScrollView(
-                      // FIX: Wrap the Column in Padding, not the property of Column
+
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0), // Padding to lift content
+                        padding: const EdgeInsets.only(bottom: 10.0),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
@@ -175,9 +177,8 @@ class _InputPageState extends State<InputPage> {
                   child: RepeatContainerCode(
                     colors: const Color(0xFF1D1E33),
                     cardWidget: SingleChildScrollView(
-                      // FIX: Wrap the Column in Padding, not the property of Column
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0), // Padding to lift content
+                        padding: const EdgeInsets.only(bottom: 10.0),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
@@ -225,19 +226,26 @@ class _InputPageState extends State<InputPage> {
               ],
             ),
           ),
-
           /// 4. Bottom Button
-          Container(
-            color: bottomContainerColor,
-            width: double.infinity,
-            height: 60.0,
-            child: const Center(
-              child: Text(
-                'CALCULATE',
-                style: TextStyle(
-                  fontSize: 20.0,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ResultScreen()),
+              );
+            },
+            child: Container(
+              color: bottomContainerColor,
+              width: double.infinity,
+              height: 60.0,
+              child: const Center(
+                child: Text(
+                  'CALCULATE',
+                  style: TextStyle( // Correct placement of TextStyle
+                    fontSize: 20.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -247,7 +255,6 @@ class _InputPageState extends State<InputPage> {
     );
   }
 }
-
 
 class RoundIcon extends StatelessWidget {
   final IconData iconData;
@@ -266,8 +273,8 @@ class RoundIcon extends StatelessWidget {
         onPress();
       },
       constraints: const BoxConstraints.tightFor(
-        width: 53.0,
-        height: 53.0,
+        width: 50.0,
+        height: 50.0,
       ),
       shape: const CircleBorder(),
       fillColor: const Color(0xFF4C4F5E),
