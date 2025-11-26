@@ -19,7 +19,7 @@ class InputPage extends StatefulWidget {
 class _InputPageState extends State<InputPage> {
   Gender? selectGender;
   int sliderHeight = 180;
-  int weight = 60;
+  int sliderWeight = 60;
   int age = 25;
 
   @override
@@ -67,7 +67,7 @@ class _InputPageState extends State<InputPage> {
             ),
           ),
 
-          /// 2. Height Section — OVERFLOW FIXED
+          /// 2. Height Section
           Expanded(
             child: RepeatContainerCode(
               colors: const Color(0xFF1D1E33),
@@ -122,7 +122,23 @@ class _InputPageState extends State<InputPage> {
                 Expanded(
                   child: RepeatContainerCode(
                     colors: const Color(0xFF1D1E33),
-                    cardWidget: Container(),
+                    cardWidget: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          const Text(
+                            'WEIGHT',
+                            style: KLABELSTYLE,
+                          ),
+                          Text(
+                            sliderWeight.toString(),
+                            style: KNUMBERSTYLE,
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+
+                        ]
+                    ),
                   ),
                 ),
                 Expanded(
