@@ -20,7 +20,7 @@ class _InputPageState extends State<InputPage> {
   Gender? selectGender;
   int sliderHeight = 180;
   int sliderWeight = 60;
-  int age = 25;
+  int sliderAge = 20;
 
   @override
   Widget build(BuildContext context) {
@@ -95,14 +95,13 @@ class _InputPageState extends State<InputPage> {
                     ],
                   ),
 
-                  /// *** FIX: Expanded Slider to remove overflow ***
                   Expanded(
                     child: Slider(
                       value: sliderHeight.toDouble(),
                       min: 120.0,
                       max: 220.0,
                       activeColor: Colors.pink,
-                      inactiveColor: Color(0xFF8D8E98),
+                      inactiveColor: const Color(0xFF8D8E98),
                       onChanged: (double newValue) {
                         setState(() {
                           sliderHeight = newValue.round();
@@ -115,36 +114,112 @@ class _InputPageState extends State<InputPage> {
             ),
           ),
 
-          /// 3. Weight + Age Section
+          /// 3. Weight + Age Section (Final Fixed Structure)
           Expanded(
             child: Row(
               children: <Widget>[
+                // --- WEIGHT SECTION ---
                 Expanded(
                   child: RepeatContainerCode(
                     colors: const Color(0xFF1D1E33),
-                    cardWidget: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          const Text(
-                            'WEIGHT',
-                            style: KLABELSTYLE,
-                          ),
-                          Text(
-                            sliderWeight.toString(),
-                            style: KNUMBERSTYLE,
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: <Widget>[
-
-                        ]
+                    cardWidget: SingleChildScrollView(
+                      // FIX: Wrap the Column in Padding, not the property of Column
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0), // Padding to lift content
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            const Text(
+                              'WEIGHT',
+                              style: KLABELSTYLE,
+                            ),
+                            Text(
+                              sliderWeight.toString(),
+                              style: KNUMBERSTYLE,
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  RoundIcon(
+                                    iconData: FontAwesomeIcons.minus,
+                                    onPress: () {
+                                      setState(() {
+                                        if (sliderWeight > 1) {
+                                          sliderWeight--;
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 10.0),
+                                  RoundIcon(
+                                    iconData: FontAwesomeIcons.plus,
+                                    onPress: () {
+                                      setState(() {
+                                        sliderWeight++;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
+                // --- AGE SECTION ---
                 Expanded(
                   child: RepeatContainerCode(
                     colors: const Color(0xFF1D1E33),
-                    cardWidget: Container(),
+                    cardWidget: SingleChildScrollView(
+                      // FIX: Wrap the Column in Padding, not the property of Column
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 10.0), // Padding to lift content
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            const Text(
+                              'AGE',
+                              style: KLABELSTYLE,
+                            ),
+                            Text(
+                              sliderAge.toString(),
+                              style: KNUMBERSTYLE,
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 15.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  RoundIcon(
+                                    iconData: FontAwesomeIcons.minus,
+                                    onPress: () {
+                                      setState(() {
+                                        if (sliderAge > 1) {
+                                          sliderAge--;
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(width: 10.0),
+                                  RoundIcon(
+                                    iconData: FontAwesomeIcons.plus,
+                                    onPress: () {
+                                      setState(() {
+                                        sliderAge++;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -168,6 +243,38 @@ class _InputPageState extends State<InputPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+class RoundIcon extends StatelessWidget {
+  final IconData iconData;
+  final Function onPress;
+
+  const RoundIcon({
+    super.key,
+    required this.iconData,
+    required this.onPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RawMaterialButton(
+      onPressed: () {
+        onPress();
+      },
+      constraints: const BoxConstraints.tightFor(
+        width: 53.0,
+        height: 53.0,
+      ),
+      shape: const CircleBorder(),
+      fillColor: const Color(0xFF4C4F5E),
+      elevation: 6.0,
+      child: Icon(
+        iconData,
+        color: Colors.white,
       ),
     );
   }
