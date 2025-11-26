@@ -3,6 +3,7 @@ import 'constantFile.dart';
 import 'containerFile.dart';
 import 'input_page.dart';
 
+
 class ResultScreen extends StatelessWidget {
   const ResultScreen({super.key});
 
