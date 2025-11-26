@@ -19,18 +19,19 @@ class InputPage extends StatefulWidget {
 }
 
 class _InputPageState extends State<InputPage> {
-  Color maleColor = deActiveColor;
-  Color feMaleColor = deActiveColor;
-  void updateColor(Gender gendertype){
-  if(gendertype==Gender.male){
-    maleColor = activeColor;
-    feMaleColor = deActiveColor;
-  }
-  if(gendertype==Gender.female){
-    maleColor = deActiveColor;
-    feMaleColor = activeColor;
-  }
-  }
+  Gender? selectGender;
+  // Color maleColor = deActiveColor;
+  // Color feMaleColor = deActiveColor;
+  // void updateColor(Gender gendertype){
+  // if(gendertype==Gender.male){
+  //   maleColor = activeColor;
+  //   feMaleColor = deActiveColor;
+  // }
+  // if(gendertype==Gender.female){
+  //   maleColor = deActiveColor;
+  //   feMaleColor = activeColor;
+  // }
+  // }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,11 +48,12 @@ class _InputPageState extends State<InputPage> {
                   child: GestureDetector(
                     onTap: (){
                       setState(() {
-                      updateColor(Gender.male);
+                        selectGender=Gender.male;
+
                       });
                     },
                     child: RepeatContainerCode(
-                      colors: maleColor,
+                      colors: selectGender==Gender.male?activeColor:deActiveColor,
                       cardWidget: const RepeatTextandIconWidget(
                         iconData: FontAwesomeIcons.male,
                         label: 'MALE',
@@ -63,11 +65,11 @@ class _InputPageState extends State<InputPage> {
                   child: GestureDetector(
                     onTap: (){
                       setState(() {
-                        updateColor(Gender.female);
+                        selectGender=Gender.female;
                       });
                     },
                     child: RepeatContainerCode(
-                      colors: feMaleColor,
+                      colors: selectGender==Gender.female?activeColor:deActiveColor,
                       cardWidget: const RepeatTextandIconWidget(
                         iconData: FontAwesomeIcons.female,
                         label: 'FEMALE',
