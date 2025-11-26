@@ -7,3 +7,9 @@ const Color bottomContainerColor = Color(0xFFEB1555);
 fontSize: 18.0,
 color: Color(0xFF8D8E98),
 );
+
+const KNUMBERSTYLE=TextStyle(
+fontSize: 45.0,
+fontWeight: FontWeight.w900,
+color: Colors.white,
+);

@@ -18,6 +18,9 @@ class InputPage extends StatefulWidget {
 
 class _InputPageState extends State<InputPage> {
   Gender? selectGender;
+  int sliderHeight = 180;
+  int weight = 60;
+  int age = 25;
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +31,7 @@ class _InputPageState extends State<InputPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          /// 1. Gender Row
           Expanded(
             child: Row(
               children: <Widget>[
@@ -40,7 +44,7 @@ class _InputPageState extends State<InputPage> {
                     },
                     colors: selectGender == Gender.male ? activeColor : deActiveColor,
                     cardWidget: const RepeatTextandIconWidget(
-                      iconData: FontAwesomeIcons.male,
+                      iconData: FontAwesomeIcons.mars,
                       label: 'MALE',
                     ),
                   ),
@@ -54,7 +58,7 @@ class _InputPageState extends State<InputPage> {
                     },
                     colors: selectGender == Gender.female ? activeColor : deActiveColor,
                     cardWidget: const RepeatTextandIconWidget(
-                      iconData: FontAwesomeIcons.female,
+                      iconData: FontAwesomeIcons.venus,
                       label: 'FEMALE',
                     ),
                   ),
@@ -62,34 +66,76 @@ class _InputPageState extends State<InputPage> {
               ],
             ),
           ),
+
+          /// 2. Height Section — OVERFLOW FIXED
           Expanded(
             child: RepeatContainerCode(
               colors: const Color(0xFF1D1E33),
-              cardWidget: Center(
-                child: Text(
-                  'HEIGHT',
-                  style: KLABELSTYLE,
-                  textAlign: TextAlign.center,
-                ),
+              cardWidget: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Text(
+                    'HEIGHT',
+                    style: KLABELSTYLE,
+                  ),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: <Widget>[
+                      Text(
+                        sliderHeight.toString(),
+                        style: KNUMBERSTYLE,
+                      ),
+                      const Text(
+                        'cm',
+                        style: KLABELSTYLE,
+                      ),
+                    ],
+                  ),
+
+                  /// *** FIX: Expanded Slider to remove overflow ***
+                  Expanded(
+                    child: Slider(
+                      value: sliderHeight.toDouble(),
+                      min: 120.0,
+                      max: 220.0,
+                      activeColor: Colors.pink,
+                      inactiveColor: Color(0xFF8D8E98),
+                      onChanged: (double newValue) {
+                        setState(() {
+                          sliderHeight = newValue.round();
+                        });
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+
+          /// 3. Weight + Age Section
           Expanded(
             child: Row(
               children: <Widget>[
                 Expanded(
                   child: RepeatContainerCode(
                     colors: const Color(0xFF1D1E33),
+                    cardWidget: Container(),
                   ),
                 ),
                 Expanded(
                   child: RepeatContainerCode(
                     colors: const Color(0xFF1D1E33),
+                    cardWidget: Container(),
                   ),
                 ),
               ],
             ),
           ),
+
+          /// 4. Bottom Button
           Container(
             color: bottomContainerColor,
             width: double.infinity,
