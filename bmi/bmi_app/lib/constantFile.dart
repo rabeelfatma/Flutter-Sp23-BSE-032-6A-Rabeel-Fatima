@@ -17,3 +17,19 @@ const KLargeButtonStyle = TextStyle(
  fontSize: 20.0,
  fontWeight: FontWeight.bold,
 );
+const TextStyle kbodyTextStyle = TextStyle(
+ fontSize: 22.0,
+);
+const TextStyle kBMIText = TextStyle(
+ fontSize: 70.0,
+ fontWeight: FontWeight.bold,
+);
+const TextStyle kResultText = TextStyle(
+ color: Color(0xFF24D876), // Green color for 'Normal'
+ fontSize: 22.0,
+ fontWeight: FontWeight.bold,
+);
+const TextStyle KTITLESTYLE2 = TextStyle(
+ fontSize: 40.0,
+ fontWeight: FontWeight.bold,
+);
