@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'IconeTextFile.dart';
 import 'ContainerFile.dart';
-const activeColor=Color(0xFF1D1E33);
-const deActiveColor=Color(0xFF111328);
-const Color activeCardColor = Color(0xFF1D1E33);
-const Color bottomContainerColor = Color(0xFFEB1555);
-enum Gender{
+import 'constantFile.dart';
+
+enum Gender {
   male,
   female,
 }
@@ -20,6 +18,7 @@ class InputPage extends StatefulWidget {
 
 class _InputPageState extends State<InputPage> {
   Gender? selectGender;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,46 +32,48 @@ class _InputPageState extends State<InputPage> {
             child: Row(
               children: <Widget>[
                 Expanded(
-                    child: RepeatContainerCode(
-                      onPressed: (){
-                        setState(() {
-                          selectGender=Gender.male;
-                        });
-                      },
-
-                      colors: selectGender==Gender.male?activeColor:deActiveColor,
-                      cardWidget: const RepeatTextandIconWidget(
-                        iconData: FontAwesomeIcons.male,
-                        label: 'MALE',
-                      ),
+                  child: RepeatContainerCode(
+                    onPressed: () {
+                      setState(() {
+                        selectGender = Gender.male;
+                      });
+                    },
+                    colors: selectGender == Gender.male ? activeColor : deActiveColor,
+                    cardWidget: const RepeatTextandIconWidget(
+                      iconData: FontAwesomeIcons.male,
+                      label: 'MALE',
                     ),
-
+                  ),
                 ),
                 Expanded(
-                    child: RepeatContainerCode(
-                      onPressed: (){
-                        setState(() {
-                          selectGender=Gender.female;
-                        });
-                      },
-                      colors: selectGender==Gender.female?activeColor:deActiveColor,
-                      cardWidget: const RepeatTextandIconWidget(
-                        iconData: FontAwesomeIcons.female,
-                        label: 'FEMALE',
-                      ),
+                  child: RepeatContainerCode(
+                    onPressed: () {
+                      setState(() {
+                        selectGender = Gender.female;
+                      });
+                    },
+                    colors: selectGender == Gender.female ? activeColor : deActiveColor,
+                    cardWidget: const RepeatTextandIconWidget(
+                      iconData: FontAwesomeIcons.female,
+                      label: 'FEMALE',
                     ),
-
+                  ),
                 ),
               ],
             ),
           ),
-
           Expanded(
             child: RepeatContainerCode(
               colors: const Color(0xFF1D1E33),
+              cardWidget: Center(
+                child: Text(
+                  'HEIGHT',
+                  style: KLABELSTYLE,
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
           ),
-
           Expanded(
             child: Row(
               children: <Widget>[
@@ -89,12 +90,20 @@ class _InputPageState extends State<InputPage> {
               ],
             ),
           ),
-
           Container(
             color: bottomContainerColor,
-            margin: const EdgeInsets.only(top: 10.0),
             width: double.infinity,
             height: 60.0,
+            child: const Center(
+              child: Text(
+                'CALCULATE',
+                style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'constantFile.dart';
 class RepeatTextandIconWidget extends StatelessWidget {
   const RepeatTextandIconWidget({
     required this.iconData,
@@ -22,13 +23,12 @@ class RepeatTextandIconWidget extends StatelessWidget {
         const SizedBox(
           height: 15.0,
         ),
-        Text(
+       Text(
           label,
-          style: const TextStyle(
-            fontSize: 18.0,
-            color: Color(0xFF8D8E98),
-          ),
+          style: KLABELSTYLE,
+
         ),
+
       ],
     );
   }

@@ -18,7 +18,6 @@ class RepeatContainerCode extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.all(10.0),
 
-        // FIX → Force it to expand fully so empty ones also appear
         height: double.infinity,
 
         decoration: BoxDecoration(
