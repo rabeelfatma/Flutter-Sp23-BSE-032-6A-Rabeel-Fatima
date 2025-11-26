@@ -5,8 +5,16 @@ import 'input_page.dart';
 
 
 class ResultScreen extends StatelessWidget {
-  const ResultScreen({super.key});
+  final String bmiResult ;
+  final String resultText ;
+  final String interpretation ;
 
+  ResultScreen({
+    super.key,
+    required this.bmiResult,
+    required this.resultText,
+    required this.interpretation,
+  });
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,17 +45,17 @@ class ResultScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   Text(
-                    'Normal',
+                    resultText.toUpperCase(),
                     textAlign: TextAlign.center,
                     style: kResultText,
                   ),
                   Text(
-                    '18.3',
+                    bmiResult,
                     textAlign: TextAlign.center,
                     style: kBMIText,
                   ),
                   Text(
-                    'BMI is low so you should work more',
+                    interpretation,
                     textAlign: TextAlign.center,
                     style: kbodyTextStyle,
                   ),
