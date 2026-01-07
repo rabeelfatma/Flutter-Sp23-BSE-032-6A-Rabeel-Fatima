@@ -15,6 +15,7 @@ class _AddLedgerEntryScreenState extends State<AddLedgerEntryScreen> {
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
+  String _type = 'debit';
 
   @override
   void initState() {
@@ -23,6 +24,7 @@ class _AddLedgerEntryScreenState extends State<AddLedgerEntryScreen> {
       _descriptionController.text = widget.entry!.description;
       _amountController.text = widget.entry!.amount.toString();
       _selectedDate = DateTime.parse(widget.entry!.date);
+      _type = widget.entry!.type;
     }
   }
 
@@ -33,6 +35,7 @@ class _AddLedgerEntryScreenState extends State<AddLedgerEntryScreen> {
         description: _descriptionController.text,
         amount: double.parse(_amountController.text),
         date: _selectedDate.toIso8601String(),
+        type: _type,
       );
 
       if (widget.entry == null) {
@@ -52,9 +55,7 @@ class _AddLedgerEntryScreenState extends State<AddLedgerEntryScreen> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
-      setState(() => _selectedDate = picked);
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   @override
@@ -82,11 +83,24 @@ class _AddLedgerEntryScreenState extends State<AddLedgerEntryScreen> {
               const SizedBox(height: 16),
               Row(
                 children: [
+                  const Text("Type: "),
+                  DropdownButton<String>(
+                    value: _type,
+                    items: const [
+                      DropdownMenuItem(value: 'debit', child: Text('Debit')),
+                      DropdownMenuItem(value: 'credit', child: Text('Credit')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) setState(() => _type = value);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
                   Text("Date: ${_selectedDate.toLocal().toString().split(' ')[0]}"),
-                  TextButton(
-                    onPressed: _pickDate,
-                    child: const Text("Pick Date"),
-                  )
+                  TextButton(onPressed: _pickDate, child: const Text("Pick Date")),
                 ],
               ),
               const SizedBox(height: 30),

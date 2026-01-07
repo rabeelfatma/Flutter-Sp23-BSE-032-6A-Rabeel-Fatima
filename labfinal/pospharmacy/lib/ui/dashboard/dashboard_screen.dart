@@ -16,6 +16,8 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int totalProducts = 0;
   int totalSales = 0;
+  int totalCustomers = 0;
+  int totalLedgerEntries = 0; // Ledger count
 
   @override
   void initState() {
@@ -29,12 +31,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final products = await SQLiteHelper.getProducts();
       final sales = await SQLiteHelper.getSales();
+      final customers = await SQLiteHelper.getCustomers();
+      final ledger = await SQLiteHelper.getLedgerEntries(); // Ledger entries
 
       if (!mounted) return;
 
       setState(() {
         totalProducts = products.length;
         totalSales = sales.length;
+        totalCustomers = customers.length;
+        totalLedgerEntries = ledger.length;
       });
     } catch (e) {
       debugPrint("Error loading stats: $e");
@@ -85,7 +91,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: StatCard(
+                    title: 'Customers',
+                    count: totalCustomers,
+                    color: themeColor,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: StatCard(
+                    title: 'Ledger',
+                    count: totalLedgerEntries,
+                    color: themeColor,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 20),
 
             /// 🔹 Quick Navigation Tiles
@@ -109,6 +134,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   _menuTile(
                     icon: Icons.receipt_long,
+                    title: 'Ledger',
+                    route: '/ledger', // Ledger screen route
+                  ),
+                  _menuTile(
+                    icon: Icons.bar_chart,
                     title: 'Reports',
                     route: '/reports',
                   ),

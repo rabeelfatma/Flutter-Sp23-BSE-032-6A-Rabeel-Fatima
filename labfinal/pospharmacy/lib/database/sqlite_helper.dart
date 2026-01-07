@@ -16,8 +16,9 @@ class SQLiteHelper {
     String path = join(await getDatabasesPath(), 'pospharmacy.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 3,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -36,11 +37,20 @@ class SQLiteHelper {
     await db.execute('''
       CREATE TABLE sales(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        item TEXT,
         amount REAL,
         customer_id INTEGER,
         datetime TEXT,
         synced INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sale_items(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sale_id INTEGER,
+        product_id INTEGER,
+        quantity INTEGER,
+        price REAL
       )
     ''');
 
@@ -58,7 +68,8 @@ class SQLiteHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         description TEXT,
         amount REAL,
-        date TEXT
+        date TEXT,
+        type TEXT DEFAULT "debit"
       )
     ''');
 
@@ -69,6 +80,27 @@ class SQLiteHelper {
         created_at TEXT
       )
     ''');
+  }
+
+  /// Handle upgrades
+  static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE ledger ADD COLUMN type TEXT DEFAULT "debit"',
+      );
+    }
+
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS sale_items(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sale_id INTEGER,
+          product_id INTEGER,
+          quantity INTEGER,
+          price REAL
+        )
+      ''');
+    }
   }
 
   // ---------------- PRODUCTS ----------------
@@ -102,7 +134,6 @@ class SQLiteHelper {
     return db.update('products', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Update stock after sale
   static Future<int> updateProductStock(int productId, int newStock) async {
     final db = await database;
     return db.update(
@@ -134,6 +165,16 @@ class SQLiteHelper {
     return db.update('sales', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
+  static Future<int> insertSaleItem(Map<String, dynamic> row) async {
+    final db = await database;
+    return db.insert('sale_items', row);
+  }
+
+  static Future<List<Map<String, dynamic>>> getSaleItemsBySale(int saleId) async {
+    final db = await database;
+    return db.query('sale_items', where: 'sale_id = ?', whereArgs: [saleId]);
+  }
+
   // ---------------- CUSTOMERS ----------------
   static Future<int> insertCustomer(Map<String, dynamic> row) async {
     final db = await database;
@@ -150,9 +191,25 @@ class SQLiteHelper {
     return db.delete('customers', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// ✅ FIXED: Customer purchase history (latest first)
   static Future<List<Map<String, dynamic>>> getCustomerHistory(int customerId) async {
     final db = await database;
-    return db.query('sales', where: 'customer_id = ?', whereArgs: [customerId]);
+    return db.query(
+      'sales',
+      where: 'customer_id = ?',
+      whereArgs: [customerId],
+      orderBy: 'datetime DESC',
+    );
+  }
+
+  /// ✅ Walk-in customer sales (no customer_id)
+  static Future<List<Map<String, dynamic>>> getWalkInSales() async {
+    final db = await database;
+    return db.query(
+      'sales',
+      where: 'customer_id IS NULL',
+      orderBy: 'datetime DESC',
+    );
   }
 
   // ---------------- LEDGER ----------------
@@ -174,6 +231,20 @@ class SQLiteHelper {
   static Future<int> deleteLedgerEntry(int id) async {
     final db = await database;
     return db.delete('ledger', where: 'id = ?', whereArgs: [id]);
+  }
+
+  static Future<double> getOutstandingBalance() async {
+    final db = await database;
+    final result = await db.rawQuery('''
+      SELECT 
+        SUM(CASE WHEN type = 'debit' THEN amount ELSE 0 END) AS totalDebit,
+        SUM(CASE WHEN type = 'credit' THEN amount ELSE 0 END) AS totalCredit
+      FROM ledger
+    ''');
+
+    double debit = (result[0]['totalDebit'] as num?)?.toDouble() ?? 0;
+    double credit = (result[0]['totalCredit'] as num?)?.toDouble() ?? 0;
+    return debit - credit;
   }
 
   // ---------------- BACKUPS ----------------

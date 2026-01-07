@@ -15,7 +15,7 @@ import '../ui/inventory/edit_product_screen.dart';
 import '../ui/inventory/product_detail_screen.dart';
 
 // POS
-import '../ui/pos/pos_screen.dart'; // POSScreen class should be defined here
+import '../ui/pos/pos_screen.dart';
 
 // Customers
 import '../ui/customers/customer_list_screen.dart';
@@ -64,8 +64,9 @@ class AppRoutes {
     '/add-customer': (_) => const AddCustomerScreen(),
 
     // Ledger
-    '/ledger': (_) => const LedgerScreen(),
-    '/add-ledger-entry': (_) => const AddLedgerEntryScreen(),
+    '/ledger': (_) => const LedgerScreen(), // Ledger list screen
+    '/add-ledger-entry': (_) => const AddLedgerEntryScreen(), // Add entry
+    // Detail screen is dynamic route below
 
     // Reports
     '/reports': (_) => const ReportsHomeScreen(),
@@ -93,6 +94,7 @@ class AppRoutes {
     );
   }
 
+  /// Ledger Detail route (view/edit a specific entry)
   static Route<dynamic> ledgerDetail(LedgerModel entry) {
     return MaterialPageRoute(
       builder: (_) => LedgerDetailScreen(entry: entry),

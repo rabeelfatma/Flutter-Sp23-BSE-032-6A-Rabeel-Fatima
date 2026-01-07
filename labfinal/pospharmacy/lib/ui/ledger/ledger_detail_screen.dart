@@ -18,6 +18,8 @@ class LedgerDetailScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text("Amount: \$${entry.amount}", style: const TextStyle(fontSize: 18)),
             const SizedBox(height: 16),
+            Text("Type: ${entry.type}", style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 16),
             Text("Date: ${entry.date.split('T')[0]}", style: const TextStyle(fontSize: 18)),
           ],
         ),

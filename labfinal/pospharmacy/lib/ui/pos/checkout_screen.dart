@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../database/sqlite_helper.dart';
 import '../../models/product_model.dart';
-import '../../services/notification_service.dart';
 import 'receipt_screen.dart';
 
 class CheckoutScreen extends StatelessWidget {
@@ -17,32 +16,30 @@ class CheckoutScreen extends StatelessWidget {
   double get total {
     double sum = 0;
     cart.forEach((id, qty) {
-      final product = products.firstWhere((p) => p.id == id);
-      sum += product.price * qty;
+      final p = products.firstWhere((e) => e.id == id);
+      sum += p.price * qty;
     });
     return sum;
   }
 
   Future<void> _confirmSale(BuildContext context) async {
-    for (final e in cart.entries) {
-      final product = products.firstWhere((p) => p.id == e.key);
+    final now = DateTime.now().toIso8601String();
+
+    for (final entry in cart.entries) {
+      final product = products.firstWhere((p) => p.id == entry.key);
+
       await SQLiteHelper.insertSale({
         'item': product.name,
-        'amount': product.price * e.value,
+        'amount': product.price * entry.value,
+        'datetime': now,
         'synced': 0,
-        'datetime': DateTime.now().toIso8601String(),
       });
 
-      // Reduce stock
       await SQLiteHelper.updateProductStock(
-          product.id!, product.stock - e.value);
+        product.id!,
+        product.stock - entry.value,
+      );
     }
-
-    NotificationService().showNotification(
-      context: context,
-      title: "Sale Successful",
-      body: "Receipt generated successfully",
-    );
 
     Navigator.pushReplacement(
       context,
@@ -59,12 +56,11 @@ class CheckoutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Checkout')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(title: const Text("Checkout")),
+      body: Center(
         child: ElevatedButton(
           onPressed: () => _confirmSale(context),
-          child: const Text('Confirm Sale'),
+          child: const Text("Confirm Sale"),
         ),
       ),
     );

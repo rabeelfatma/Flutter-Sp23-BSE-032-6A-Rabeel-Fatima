@@ -13,6 +13,7 @@ class LedgerScreen extends StatefulWidget {
 
 class _LedgerScreenState extends State<LedgerScreen> {
   List<LedgerModel> entries = [];
+  double outstandingBalance = 0;
 
   @override
   void initState() {
@@ -22,8 +23,10 @@ class _LedgerScreenState extends State<LedgerScreen> {
 
   Future<void> _loadLedgerEntries() async {
     final list = await SQLiteHelper.getLedgerEntries();
+    final balance = await SQLiteHelper.getOutstandingBalance();
     setState(() {
       entries = list.map((e) => LedgerModel.fromMap(e)).toList();
+      outstandingBalance = balance;
     });
   }
 
@@ -38,45 +41,62 @@ class _LedgerScreenState extends State<LedgerScreen> {
       appBar: AppBar(
         title: const Text("Ledger"),
       ),
-      body: entries.isEmpty
-          ? const Center(child: Text("No ledger entries"))
-          : ListView.builder(
-        itemCount: entries.length,
-        itemBuilder: (_, index) {
-          final e = entries[index];
-          return ListTile(
-            title: Text(e.description),
-            subtitle: Text("Amount: \$${e.amount} | Date: ${e.date}"),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: Colors.blue.shade50,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: () {
+                const Text("Outstanding Balance:", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text("\$${outstandingBalance.toStringAsFixed(2)}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: entries.isEmpty
+                ? const Center(child: Text("No ledger entries"))
+                : ListView.builder(
+              itemCount: entries.length,
+              itemBuilder: (_, index) {
+                final e = entries[index];
+                return ListTile(
+                  title: Text(e.description),
+                  subtitle: Text("Amount: \$${e.amount} | Type: ${e.type} | Date: ${e.date.split('T')[0]}"),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AddLedgerEntryScreen(entry: e),
+                            ),
+                          ).then((_) => _loadLedgerEntries());
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () => _deleteEntry(e.id!),
+                      ),
+                    ],
+                  ),
+                  onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => AddLedgerEntryScreen(entry: e),
+                        builder: (_) => LedgerDetailScreen(entry: e),
                       ),
-                    ).then((_) => _loadLedgerEntries());
+                    );
                   },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () => _deleteEntry(e.id!),
-                ),
-              ],
+                );
+              },
             ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => LedgerDetailScreen(entry: e),
-                ),
-              );
-            },
-          );
-        },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
