@@ -15,8 +15,7 @@ import '../ui/inventory/edit_product_screen.dart';
 import '../ui/inventory/product_detail_screen.dart';
 
 // POS
-// Check if this file exists and PosScreen is defined there
-import '../ui/pos/pos_screen.dart';
+import '../ui/pos/pos_screen.dart'; // POSScreen class should be defined here
 
 // Customers
 import '../ui/customers/customer_list_screen.dart';
@@ -35,24 +34,13 @@ import '../ui/settings/settings_screen.dart';
 import '../ui/settings/backup_settings_screen.dart';
 import '../ui/settings/restore_screen.dart';
 import '../ui/settings/account_screen.dart';
+import '../ui/settings/profile_edit_screen.dart';
+import '../ui/settings/change_password_screen.dart';
+import '../ui/settings/notification_settings_screen.dart';
 
 // Models
 import '../models/product_model.dart';
 import '../models/ledger_model.dart';
-
-/// If PosScreen class is missing in pos_screen.dart, define a placeholder
-/// Remove this if you already have a proper PosScreen implemented
-class PosScreen extends StatelessWidget {
-  const PosScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("POS Screen")),
-      body: const Center(child: Text("POS Module Placeholder")),
-    );
-  }
-}
 
 class AppRoutes {
   static final Map<String, WidgetBuilder> routes = {
@@ -65,7 +53,7 @@ class AppRoutes {
     '/dashboard': (_) => const DashboardScreen(),
 
     // POS
-    '/pos': (_) => const PosScreen(),
+    '/pos': (_) => const POSScreen(),
 
     // Inventory
     '/inventory': (_) => const InventoryListScreen(),
@@ -87,8 +75,12 @@ class AppRoutes {
     '/backup-settings': (_) => const BackupSettingsScreen(),
     '/restore-settings': (_) => const RestoreScreen(),
     '/account': (_) => const AccountScreen(),
+    '/profile-edit': (_) => const ProfileEditScreen(),
+    '/change-password': (_) => const ChangePasswordScreen(),
+    '/notification-settings': (_) => const NotificationSettingsScreen(),
   };
 
+  // Dynamic routes with arguments
   static Route<dynamic> editProduct(ProductModel product) {
     return MaterialPageRoute(
       builder: (_) => EditProductScreen(product: product),

@@ -15,40 +15,26 @@ class AccountScreen extends StatelessWidget {
             leading: const Icon(Icons.person),
             title: const Text("Profile"),
             subtitle: const Text("Edit your profile details"),
-            onTap: () {
-              // TODO: Navigate to Profile Edit Screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Profile Screen clicked")));
-            },
+            onTap: () => Navigator.pushNamed(context, '/profile-edit'),
           ),
           ListTile(
             leading: const Icon(Icons.lock),
             title: const Text("Change Password"),
             subtitle: const Text("Update your account password"),
-            onTap: () {
-              // TODO: Navigate to Change Password Screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Change Password clicked")));
-            },
+            onTap: () => Navigator.pushNamed(context, '/change-password'),
           ),
           ListTile(
             leading: const Icon(Icons.notifications),
             title: const Text("Notifications"),
             subtitle: const Text("Manage app notifications"),
-            onTap: () {
-              // TODO: Navigate to Notification Settings
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Notifications clicked")));
-            },
+            onTap: () => Navigator.pushNamed(context, '/notification-settings'),
           ),
           ListTile(
             leading: const Icon(Icons.color_lens),
             title: const Text("Theme"),
             subtitle: const Text("Switch between light and dark mode"),
             onTap: () {
-              // TODO: Switch app theme logic
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Theme clicked")));
+              // TODO: Implement theme toggle
             },
           ),
           const SizedBox(height: 20),
@@ -56,9 +42,6 @@ class AccountScreen extends StatelessWidget {
             text: "Logout",
             onPressed: () {
               // TODO: Add actual logout logic
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Logged out (demo)")),
-              );
             },
           ),
         ],

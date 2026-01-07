@@ -21,20 +21,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadStats();
-    SyncManager.syncAll();
+    SyncManager.syncAll(); // Optional: sync data with server
   }
 
+  /// 🔹 Load counts from SQLite
   Future<void> _loadStats() async {
-    final products = await SQLiteHelper.getProducts();
-    final sales = await SQLiteHelper.getSales();
+    try {
+      final products = await SQLiteHelper.getProducts();
+      final sales = await SQLiteHelper.getSales();
 
-    if (!mounted) return;
-    setState(() {
-      totalProducts = products.length;
-      totalSales = sales.length;
-    });
+      if (!mounted) return;
+
+      setState(() {
+        totalProducts = products.length;
+        totalSales = sales.length;
+      });
+    } catch (e) {
+      debugPrint("Error loading stats: $e");
+    }
   }
 
+  /// 🔹 Logout function
   void _logout() {
     Navigator.pushNamedAndRemoveUntil(
       context,
@@ -51,14 +58,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: const [
-          SyncIndicator(),
+          SyncIndicator(), // Shows sync status
         ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            /// 🔹 STATS
+            /// 🔹 Stats Cards
             Row(
               children: [
                 Expanded(
@@ -81,7 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const SizedBox(height: 20),
 
-            /// 🔹 QUICK NAVIGATION
+            /// 🔹 Quick Navigation Tiles
             Card(
               child: Column(
                 children: [
@@ -112,8 +119,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const Divider(),
                   ListTile(
-                    leading:
-                    const Icon(Icons.logout, color: Colors.red),
+                    leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text(
                       'Logout',
                       style: TextStyle(color: Colors.red),
@@ -126,7 +132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const SizedBox(height: 20),
 
-            /// 🔹 SALES CHART
+            /// 🔹 Sales Chart
             const SizedBox(
               height: 250,
               child: SalesChartWidget(),
@@ -134,7 +140,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const SizedBox(height: 20),
 
-            /// 🔹 LOW STOCK
+            /// 🔹 Low Stock Widget
             const LowStockWidget(),
           ],
         ),
@@ -142,6 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// 🔹 Menu Tile helper
   Widget _menuTile({
     required IconData icon,
     required String title,

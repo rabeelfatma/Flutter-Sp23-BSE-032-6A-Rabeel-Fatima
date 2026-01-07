@@ -4,14 +4,14 @@ import 'package:path/path.dart';
 class SQLiteHelper {
   static Database? _database;
 
-  // Singleton database
+  /// Singleton database instance
   static Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDatabase();
     return _database!;
   }
 
-  // Initialize DB
+  /// Initialize DB
   static Future<Database> _initDatabase() async {
     String path = join(await getDatabasesPath(), 'pospharmacy.db');
     return await openDatabase(
@@ -21,9 +21,8 @@ class SQLiteHelper {
     );
   }
 
-  // Create tables
+  /// Create tables
   static Future<void> _onCreate(Database db, int version) async {
-    // Products
     await db.execute('''
       CREATE TABLE products(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,7 +33,6 @@ class SQLiteHelper {
       )
     ''');
 
-    // Sales
     await db.execute('''
       CREATE TABLE sales(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +44,6 @@ class SQLiteHelper {
       )
     ''');
 
-    // Customers
     await db.execute('''
       CREATE TABLE customers(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +53,6 @@ class SQLiteHelper {
       )
     ''');
 
-    // Ledger
     await db.execute('''
       CREATE TABLE ledger(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,7 +62,6 @@ class SQLiteHelper {
       )
     ''');
 
-    // Backups
     await db.execute('''
       CREATE TABLE backups(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,7 +102,7 @@ class SQLiteHelper {
     return db.update('products', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
   }
 
-  // ✅ NEW: Update product stock (for Checkout)
+  /// Update stock after sale
   static Future<int> updateProductStock(int productId, int newStock) async {
     final db = await database;
     return db.update(

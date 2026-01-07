@@ -16,26 +16,17 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.backup),
             title: const Text("Backup Data"),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BackupSettingsScreen()),
-            ),
+            onTap: () => Navigator.pushNamed(context, '/backup-settings'),
           ),
           ListTile(
             leading: const Icon(Icons.restore),
             title: const Text("Restore Data"),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const RestoreScreen()),
-            ),
+            onTap: () => Navigator.pushNamed(context, '/restore-settings'),
           ),
           ListTile(
             leading: const Icon(Icons.account_circle),
             title: const Text("Account Settings"),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AccountScreen()),
-            ),
+            onTap: () => Navigator.pushNamed(context, '/account'),
           ),
         ],
       ),
