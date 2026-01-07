@@ -31,22 +31,20 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
   void _goToAddProduct() async {
     await Navigator.push(
         context, MaterialPageRoute(builder: (_) => const AddProductScreen()));
-    _loadProducts(); // refresh after add
+    _loadProducts();
   }
 
   void _goToEditProduct(ProductModel product) async {
     await Navigator.push(
         context,
-        MaterialPageRoute(
-            builder: (_) => EditProductScreen(product: product)));
-    _loadProducts(); // refresh after edit
+        MaterialPageRoute(builder: (_) => EditProductScreen(product: product)));
+    _loadProducts();
   }
 
   void _goToProductDetail(ProductModel product) {
     Navigator.push(
         context,
-        MaterialPageRoute(
-            builder: (_) => ProductDetailScreen(product: product)));
+        MaterialPageRoute(builder: (_) => ProductDetailScreen(product: product)));
   }
 
   void _deleteProduct(ProductModel product) async {
@@ -71,7 +69,8 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
           final p = products[index];
           return ListTile(
             title: Text(p.name),
-            subtitle: Text('Stock: ${p.stock} | Price: \$${p.price}'),
+            subtitle: Text(
+                'Stock: ${p.stock} | Price: \$${p.price} | Category: ${p.category}'),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -83,6 +82,8 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                     onPressed: () => _deleteProduct(p)),
               ],
             ),
+            tileColor:
+            p.stock <= 5 ? Colors.red.withOpacity(0.1) : null, // low stock highlight
             onTap: () => _goToProductDetail(p),
           );
         },

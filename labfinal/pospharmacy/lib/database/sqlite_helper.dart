@@ -16,7 +16,7 @@ class SQLiteHelper {
     String path = join(await getDatabasesPath(), 'pospharmacy.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -27,10 +27,23 @@ class SQLiteHelper {
     await db.execute('''
       CREATE TABLE products(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sku TEXT,
         name TEXT,
         price REAL,
+        cost REAL,
+        category TEXT,
         stock INTEGER,
         synced INTEGER DEFAULT 0
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE stock_history(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER,
+        change INTEGER,
+        type TEXT,  -- in/out
+        date TEXT
       )
     ''');
 
@@ -101,6 +114,18 @@ class SQLiteHelper {
         )
       ''');
     }
+
+    if (oldVersion < 4) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS stock_history(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id INTEGER,
+          change INTEGER,
+          type TEXT,
+          date TEXT
+        )
+      ''');
+    }
   }
 
   // ---------------- PRODUCTS ----------------
@@ -141,6 +166,22 @@ class SQLiteHelper {
       {'stock': newStock},
       where: 'id = ?',
       whereArgs: [productId],
+    );
+  }
+
+  // ---------------- STOCK HISTORY ----------------
+  static Future<int> insertStockHistory(Map<String, dynamic> row) async {
+    final db = await database;
+    return db.insert('stock_history', row);
+  }
+
+  static Future<List<Map<String, dynamic>>> getStockHistory(int productId) async {
+    final db = await database;
+    return db.query(
+      'stock_history',
+      where: 'product_id = ?',
+      whereArgs: [productId],
+      orderBy: 'date DESC',
     );
   }
 
@@ -191,7 +232,6 @@ class SQLiteHelper {
     return db.delete('customers', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// ✅ FIXED: Customer purchase history (latest first)
   static Future<List<Map<String, dynamic>>> getCustomerHistory(int customerId) async {
     final db = await database;
     return db.query(
@@ -202,7 +242,6 @@ class SQLiteHelper {
     );
   }
 
-  /// ✅ Walk-in customer sales (no customer_id)
   static Future<List<Map<String, dynamic>>> getWalkInSales() async {
     final db = await database;
     return db.query(
