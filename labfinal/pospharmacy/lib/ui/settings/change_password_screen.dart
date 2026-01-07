@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../widgets/primary_button.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/notification_service.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({Key? key}) : super(key: key);
@@ -10,27 +13,44 @@ class ChangePasswordScreen extends StatefulWidget {
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController oldPasswordController = TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController confirmPasswordController =
   TextEditingController();
+  bool _loading = false;
 
-  void _savePassword() {
-    if (_formKey.currentState!.validate()) {
-      // Replace this with real database or auth logic
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Password changed successfully!")),
+  void _savePassword() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+
+    bool success = await authProvider.resetPassword(
+      authProvider.userEmail ?? "",
+      newPasswordController.text.trim(),
+    );
+
+    setState(() => _loading = false);
+
+    if (success) {
+      NotificationService().showNotification(
+        context: context,
+        title: "Password Changed",
+        body: "Your password has been updated successfully",
       );
-
-      oldPasswordController.clear();
       newPasswordController.clear();
       confirmPasswordController.clear();
+    } else {
+      NotificationService().showNotification(
+        context: context,
+        title: "Error",
+        body: "Failed to update password",
+      );
     }
   }
 
   @override
   void dispose() {
-    oldPasswordController.dispose();
     newPasswordController.dispose();
     confirmPasswordController.dispose();
     super.dispose();
@@ -47,17 +67,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           child: Column(
             children: [
               TextFormField(
-                controller: oldPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: "Old Password",
-                  border: OutlineInputBorder(),
-                ),
-                validator: (val) =>
-                val == null || val.isEmpty ? "Enter old password" : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
                 controller: newPasswordController,
                 obscureText: true,
                 decoration: const InputDecoration(
@@ -66,7 +75,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) return "Enter new password";
-                  if (val.length < 6) return "Password must be at least 6 chars";
+                  if (val.length < 6)
+                    return "Password must be at least 6 chars";
                   return null;
                 },
               ),
@@ -80,14 +90,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) return "Confirm password";
-                  if (val != newPasswordController.text) return "Passwords do not match";
+                  if (val != newPasswordController.text)
+                    return "Passwords do not match";
                   return null;
                 },
               ),
               const SizedBox(height: 20),
               PrimaryButton(
-                text: "Save",
-                onPressed: _savePassword,
+                text: _loading ? "Saving..." : "Save",
+                onPressed: _loading ? null : _savePassword,
               ),
             ],
           ),

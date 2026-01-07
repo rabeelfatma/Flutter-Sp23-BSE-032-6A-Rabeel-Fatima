@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
+import '../../providers/auth_provider.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -15,9 +17,12 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   bool _obscurePassword = true;
+  bool _loading = false;
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text(AppStrings.signup)),
@@ -38,7 +43,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 validator: (value) =>
                 value == null || value.isEmpty ? "Name is required" : null,
               ),
-
               const SizedBox(height: 16),
 
               TextFormField(
@@ -53,7 +57,6 @@ class _SignupScreenState extends State<SignupScreen> {
                   return null;
                 },
               ),
-
               const SizedBox(height: 16),
 
               TextFormField(
@@ -63,36 +66,50 @@ class _SignupScreenState extends State<SignupScreen> {
                   labelText: "Password",
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePassword
-                        ? Icons.visibility_off
-                        : Icons.visibility),
+                    icon: Icon(
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility),
                     onPressed: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
-                    return "Password required";
+                  if (value == null || value.isEmpty) return "Password required";
                   if (value.length < 6) return "Minimum 6 characters";
                   return null;
                 },
               ),
-
               const SizedBox(height: 30),
 
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: _loading
+                      ? null
+                      : () async {
                     if (_formKey.currentState!.validate()) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text("Signup Successful")),
+                      setState(() => _loading = true);
+                      bool success = await authProvider.signup(
+                        _nameController.text.trim(),
+                        _emailController.text.trim(),
+                        _passwordController.text.trim(),
                       );
-                      Navigator.pop(context);
+                      setState(() => _loading = false);
+
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Signup Successful")),
+                        );
+                        Navigator.pop(context);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Email already exists")),
+                        );
+                      }
                     }
                   },
-                  child: const Text(AppStrings.signup),
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(AppStrings.signup),
                 ),
               ),
             ],

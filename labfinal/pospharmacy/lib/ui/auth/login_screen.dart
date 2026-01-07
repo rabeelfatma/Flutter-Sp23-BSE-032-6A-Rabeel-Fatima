@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import 'signup_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,9 +18,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  bool _loading = false;
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text(AppStrings.login)),
@@ -61,9 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
                     ),
                     onPressed: () {
                       setState(() {
@@ -73,12 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Password is required";
-                  }
-                  if (value.length < 6) {
-                    return "Minimum 6 characters required";
-                  }
+                  if (value == null || value.isEmpty) return "Password is required";
+                  if (value.length < 6) return "Minimum 6 characters required";
                   return null;
                 },
               ),
@@ -88,18 +87,32 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: _loading
+                      ? null
+                      : () async {
                     if (_formKey.currentState!.validate()) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Login Successful")),
+                      setState(() => _loading = true);
+                      bool success = await authProvider.login(
+                        _emailController.text.trim(),
+                        _passwordController.text.trim(),
                       );
+                      setState(() => _loading = false);
 
-                      // ✅ DASHBOARD NAVIGATION
-                      Navigator.pushReplacementNamed(
-                          context, '/dashboard');
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Login Successful")),
+                        );
+                        Navigator.pushReplacementNamed(context, '/dashboard');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Invalid email or password")),
+                        );
+                      }
                     }
                   },
-                  child: const Text(AppStrings.login),
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(AppStrings.login),
                 ),
               ),
 
@@ -112,8 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => const ForgotPasswordScreen()),
+                      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                     );
                   },
                   child: const Text(AppStrings.forgotPassword),
@@ -131,8 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (_) => const SignupScreen()),
+                        MaterialPageRoute(builder: (_) => const SignupScreen()),
                       );
                     },
                     child: const Text(AppStrings.signup),

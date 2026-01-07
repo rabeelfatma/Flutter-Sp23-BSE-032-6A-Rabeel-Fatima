@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../widgets/primary_button.dart';
+import '../../providers/auth_provider.dart';
 
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text("Account Settings")),
       body: ListView(
@@ -27,7 +31,8 @@ class AccountScreen extends StatelessWidget {
             leading: const Icon(Icons.notifications),
             title: const Text("Notifications"),
             subtitle: const Text("Manage app notifications"),
-            onTap: () => Navigator.pushNamed(context, '/notification-settings'),
+            onTap: () =>
+                Navigator.pushNamed(context, '/notification-settings'),
           ),
           ListTile(
             leading: const Icon(Icons.color_lens),
@@ -41,7 +46,8 @@ class AccountScreen extends StatelessWidget {
           PrimaryButton(
             text: "Logout",
             onPressed: () {
-              // TODO: Add actual logout logic
+              authProvider.logout();
+              Navigator.pushReplacementNamed(context, '/login');
             },
           ),
         ],
