@@ -6,7 +6,11 @@ class ReceiptScreen extends StatelessWidget {
   final List<ProductModel> products;
   final double total;
 
-  const ReceiptScreen({super.key, required this.cart, required this.products, required this.total});
+  const ReceiptScreen(
+      {super.key,
+        required this.cart,
+        required this.products,
+        required this.total});
 
   @override
   Widget build(BuildContext context) {
@@ -27,10 +31,12 @@ class ReceiptScreen extends StatelessWidget {
             }),
             const SizedBox(height: 20),
             Text('Total: \$${total.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                style:
+                const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             ElevatedButton(
-                onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
+                onPressed: () =>
+                    Navigator.popUntil(context, (route) => route.isFirst),
                 child: const Text('Done'))
           ],
         ),

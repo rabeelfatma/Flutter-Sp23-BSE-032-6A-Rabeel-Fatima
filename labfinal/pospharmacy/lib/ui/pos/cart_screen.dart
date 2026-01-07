@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/product_model.dart';
 import 'checkout_screen.dart';
-import '../../widgets/empty_state.dart'; // Added for empty cart
+import '../../widgets/empty_state.dart'; // For empty cart
 
 class CartScreen extends StatefulWidget {
   final Map<int, int> cart; // productId -> quantity

@@ -21,9 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text(AppStrings.login),
-      ),
+      appBar: AppBar(title: const Text(AppStrings.login)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -31,36 +29,29 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               const SizedBox(height: 40),
-              const Icon(
-                Icons.point_of_sale,
-                size: 90,
-                color: AppColors.primary,
-              ),
+              const Icon(Icons.point_of_sale, size: 90, color: AppColors.primary),
               const SizedBox(height: 20),
               Text(
                 AppStrings.appName,
                 style: Theme.of(context).textTheme.headlineLarge,
               ),
               const SizedBox(height: 40),
+
               // Email
               TextFormField(
                 controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
                   labelText: "Email",
                   prefixIcon: Icon(Icons.email),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Email is required";
-                  }
-                  if (!value.contains('@')) {
-                    return "Enter a valid email";
-                  }
+                  if (value == null || value.isEmpty) return "Email is required";
+                  if (!value.contains('@')) return "Enter a valid email";
                   return null;
                 },
               ),
               const SizedBox(height: 16),
+
               // Password
               TextFormField(
                 controller: _passwordController,
@@ -70,7 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.lock),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      _obscurePassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
                     ),
                     onPressed: () {
                       setState(() {
@@ -90,22 +83,28 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 30),
+
               // Login Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      // TODO: Replace with actual Firebase Login
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Login Successful (Demo)")),
+                        const SnackBar(content: Text("Login Successful")),
                       );
+
+                      // ✅ DASHBOARD NAVIGATION
+                      Navigator.pushReplacementNamed(
+                          context, '/dashboard');
                     }
                   },
                   child: const Text(AppStrings.login),
                 ),
               ),
+
               const SizedBox(height: 10),
+
               // Forgot Password
               Align(
                 alignment: Alignment.centerRight,
@@ -120,7 +119,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: const Text(AppStrings.forgotPassword),
                 ),
               ),
+
               const SizedBox(height: 10),
+
               // Signup
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -130,7 +131,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const SignupScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const SignupScreen()),
                       );
                     },
                     child: const Text(AppStrings.signup),

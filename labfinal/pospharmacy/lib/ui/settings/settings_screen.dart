@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'backup_settings_screen.dart';
 import 'restore_screen.dart';
 import 'account_screen.dart';
-import '../../widgets/stat_card.dart'; // optional: if you want to show any summary
-import '../../widgets/sync_indicator.dart'; // optional
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});

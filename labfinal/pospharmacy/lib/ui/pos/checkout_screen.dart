@@ -32,6 +32,10 @@ class CheckoutScreen extends StatelessWidget {
         'synced': 0,
         'datetime': DateTime.now().toIso8601String(),
       });
+
+      // Reduce stock
+      await SQLiteHelper.updateProductStock(
+          product.id!, product.stock - e.value);
     }
 
     NotificationService().showNotification(

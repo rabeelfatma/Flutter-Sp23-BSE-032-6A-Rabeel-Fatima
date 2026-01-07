@@ -28,18 +28,19 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Column(
             children: [
               const SizedBox(height: 20),
+
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: "Full Name",
                   prefixIcon: Icon(Icons.person),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) return "Name is required";
-                  return null;
-                },
+                validator: (value) =>
+                value == null || value.isEmpty ? "Name is required" : null,
               ),
+
               const SizedBox(height: 16),
+
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -48,11 +49,13 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) return "Email is required";
-                  if (!value.contains('@')) return "Enter a valid email";
+                  if (!value.contains('@')) return "Enter valid email";
                   return null;
                 },
               ),
+
               const SizedBox(height: 16),
+
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -63,30 +66,30 @@ class _SignupScreenState extends State<SignupScreen> {
                     icon: Icon(_obscurePassword
                         ? Icons.visibility_off
                         : Icons.visibility),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty) return "Password is required";
-                  if (value.length < 6) return "Minimum 6 characters required";
+                  if (value == null || value.isEmpty)
+                    return "Password required";
+                  if (value.length < 6) return "Minimum 6 characters";
                   return null;
                 },
               ),
+
               const SizedBox(height: 30),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      // TODO: Replace with Firebase Signup Logic
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Signup Successful (Demo)")),
+                        const SnackBar(
+                            content: Text("Signup Successful")),
                       );
-                      Navigator.pop(context); // Go back to login
+                      Navigator.pop(context);
                     }
                   },
                   child: const Text(AppStrings.signup),

@@ -23,7 +23,7 @@ class SQLiteHelper {
 
   // Create tables
   static Future<void> _onCreate(Database db, int version) async {
-    // Existing tables
+    // Products
     await db.execute('''
       CREATE TABLE products(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,6 +34,7 @@ class SQLiteHelper {
       )
     ''');
 
+    // Sales
     await db.execute('''
       CREATE TABLE sales(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,6 +46,7 @@ class SQLiteHelper {
       )
     ''');
 
+    // Customers
     await db.execute('''
       CREATE TABLE customers(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,6 +56,7 @@ class SQLiteHelper {
       )
     ''');
 
+    // Ledger
     await db.execute('''
       CREATE TABLE ledger(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,7 +66,7 @@ class SQLiteHelper {
       )
     ''');
 
-    // NEW: backups table for PDF/screenshots requirement
+    // Backups
     await db.execute('''
       CREATE TABLE backups(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,6 +105,17 @@ class SQLiteHelper {
   static Future<int> markProductAsSynced(int id) async {
     final db = await database;
     return db.update('products', {'synced': 1}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ✅ NEW: Update product stock (for Checkout)
+  static Future<int> updateProductStock(int productId, int newStock) async {
+    final db = await database;
+    return db.update(
+      'products',
+      {'stock': newStock},
+      where: 'id = ?',
+      whereArgs: [productId],
+    );
   }
 
   // ---------------- SALES ----------------

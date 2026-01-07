@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-// Auth Screens
+// Auth
 import '../ui/auth/login_screen.dart';
 import '../ui/auth/signup_screen.dart';
 import '../ui/auth/forgot_password_screen.dart';
@@ -15,15 +15,12 @@ import '../ui/inventory/edit_product_screen.dart';
 import '../ui/inventory/product_detail_screen.dart';
 
 // POS
+// Check if this file exists and PosScreen is defined there
 import '../ui/pos/pos_screen.dart';
-import '../ui/pos/cart_screen.dart';
-import '../ui/pos/checkout_screen.dart';
-import '../ui/pos/receipt_screen.dart';
 
 // Customers
 import '../ui/customers/customer_list_screen.dart';
 import '../ui/customers/add_customer_screen.dart';
-import '../ui/customers/customer_history_screen.dart';
 
 // Ledger
 import '../ui/ledger/ledger_screen.dart';
@@ -32,10 +29,6 @@ import '../ui/ledger/ledger_detail_screen.dart';
 
 // Reports
 import '../ui/reports/reports_home_screen.dart';
-import '../ui/reports/daily_report_screen.dart';
-import '../ui/reports/monthly_report_screen.dart';
-import '../ui/reports/stock_report_screen.dart';
-import '../ui/reports/customer_report_screen.dart';
 
 // Settings
 import '../ui/settings/settings_screen.dart';
@@ -45,12 +38,24 @@ import '../ui/settings/account_screen.dart';
 
 // Models
 import '../models/product_model.dart';
-import '../models/customer_model.dart';
 import '../models/ledger_model.dart';
 
+/// If PosScreen class is missing in pos_screen.dart, define a placeholder
+/// Remove this if you already have a proper PosScreen implemented
+class PosScreen extends StatelessWidget {
+  const PosScreen({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("POS Screen")),
+      body: const Center(child: Text("POS Module Placeholder")),
+    );
+  }
+}
+
 class AppRoutes {
-  // Non-parameterized screens
-  static Map<String, WidgetBuilder> routes = {
+  static final Map<String, WidgetBuilder> routes = {
     // Auth
     '/login': (_) => const LoginScreen(),
     '/signup': (_) => const SignupScreen(),
@@ -58,6 +63,9 @@ class AppRoutes {
 
     // Dashboard
     '/dashboard': (_) => const DashboardScreen(),
+
+    // POS
+    '/pos': (_) => const PosScreen(),
 
     // Inventory
     '/inventory': (_) => const InventoryListScreen(),
@@ -81,20 +89,19 @@ class AppRoutes {
     '/account': (_) => const AccountScreen(),
   };
 
-  // Parameterized screens that actually exist in your project
-  static Route<dynamic> editProductScreen(ProductModel product) {
+  static Route<dynamic> editProduct(ProductModel product) {
     return MaterialPageRoute(
       builder: (_) => EditProductScreen(product: product),
     );
   }
 
-  static Route<dynamic> productDetailScreen(ProductModel product) {
+  static Route<dynamic> productDetail(ProductModel product) {
     return MaterialPageRoute(
       builder: (_) => ProductDetailScreen(product: product),
     );
   }
 
-  static Route<dynamic> ledgerDetailScreen(LedgerModel entry) {
+  static Route<dynamic> ledgerDetail(LedgerModel entry) {
     return MaterialPageRoute(
       builder: (_) => LedgerDetailScreen(entry: entry),
     );
