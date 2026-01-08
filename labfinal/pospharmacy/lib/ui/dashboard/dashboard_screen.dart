@@ -1,3 +1,4 @@
+import 'dart:async'; // ✅ ADD
 import 'package:flutter/material.dart';
 import '../../database/sqlite_helper.dart';
 import '../../core/utils/sync_manager.dart';
@@ -19,21 +20,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int totalCustomers = 0;
   int totalLedgerEntries = 0;
 
+  Timer? _autoRefreshTimer; // ✅ ADD
+
   @override
   void initState() {
     super.initState();
     _loadStats();
     SyncManager.syncAll();
+
+    /// 🔥 AUTO REFRESH (real-time dashboard)
+    _autoRefreshTimer = Timer.periodic(
+      const Duration(seconds: 2),
+          (_) => _loadStats(),
+    );
   }
 
-  /// 🔥 KEY FIX: Refresh stats whenever dashboard comes back
+  /// Refresh stats whenever dashboard comes back
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadStats();
   }
 
-  /// 🔹 Load counts from SQLite
+  /// Load counts from SQLite
   Future<void> _loadStats() async {
     try {
       final products = await SQLiteHelper.getProducts();
@@ -54,13 +63,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  /// 🔹 Logout
+  /// Logout
   void _logout() {
     Navigator.pushNamedAndRemoveUntil(
       context,
       '/login',
           (route) => false,
     );
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel(); // ✅ ADD (memory safe)
+    super.dispose();
   }
 
   @override
@@ -74,125 +89,128 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SyncIndicator(),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            /// 🔹 STATS
-            Row(
-              children: [
-                Expanded(
-                  child: StatCard(
-                    title: '📦 Products',
-                    count: totalProducts,
-                    color: themeColor,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: StatCard(
-                    title: '💰 Sales',
-                    count: totalSales,
-                    color: themeColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: StatCard(
-                    title: '👥 Customers',
-                    count: totalCustomers,
-                    color: themeColor,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: StatCard(
-                    title: '📒 Ledger',
-                    count: totalLedgerEntries,
-                    color: themeColor,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            /// 🔹 QUICK MENU
-            Card(
-              child: Column(
+      body: RefreshIndicator(
+        onRefresh: _loadStats,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              /// STATS
+              Row(
                 children: [
-                  _menuTile(
-                    icon: Icons.point_of_sale,
-                    emoji: '🧾',
-                    title: 'POS / Billing',
-                    route: '/pos',
-                  ),
-                  _menuTile(
-                    icon: Icons.inventory,
-                    emoji: '📦',
-                    title: 'Inventory',
-                    route: '/inventory',
-                  ),
-                  _menuTile(
-                    icon: Icons.people,
-                    emoji: '👥',
-                    title: 'Customers',
-                    route: '/customers',
-                  ),
-                  _menuTile(
-                    icon: Icons.receipt_long,
-                    emoji: '📒',
-                    title: 'Ledger',
-                    route: '/ledger',
-                  ),
-                  _menuTile(
-                    icon: Icons.bar_chart,
-                    emoji: '📊',
-                    title: 'Reports',
-                    route: '/reports',
-                  ),
-                  _menuTile(
-                    icon: Icons.settings,
-                    emoji: '⚙️',
-                    title: 'Settings',
-                    route: '/settings',
-                  ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: const Text(
-                      '🚪 Logout',
-                      style: TextStyle(color: Colors.red),
+                  Expanded(
+                    child: StatCard(
+                      title: '📦 Products',
+                      count: totalProducts,
+                      color: themeColor,
                     ),
-                    onTap: _logout,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: StatCard(
+                      title: '💰 Sales',
+                      count: totalSales,
+                      color: themeColor,
+                    ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: StatCard(
+                      title: '👥 Customers',
+                      count: totalCustomers,
+                      color: themeColor,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: StatCard(
+                      title: '📒 Ledger',
+                      count: totalLedgerEntries,
+                      color: themeColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
 
-            const SizedBox(height: 20),
+              /// QUICK MENU
+              Card(
+                child: Column(
+                  children: [
+                    _menuTile(
+                      icon: Icons.point_of_sale,
+                      emoji: '🧾',
+                      title: 'POS / Billing',
+                      route: '/pos',
+                    ),
+                    _menuTile(
+                      icon: Icons.inventory,
+                      emoji: '📦',
+                      title: 'Inventory',
+                      route: '/inventory',
+                    ),
+                    _menuTile(
+                      icon: Icons.people,
+                      emoji: '👥',
+                      title: 'Customers',
+                      route: '/customers',
+                    ),
+                    _menuTile(
+                      icon: Icons.receipt_long,
+                      emoji: '📒',
+                      title: 'Ledger',
+                      route: '/ledger',
+                    ),
+                    _menuTile(
+                      icon: Icons.bar_chart,
+                      emoji: '📊',
+                      title: 'Reports',
+                      route: '/reports',
+                    ),
+                    _menuTile(
+                      icon: Icons.settings,
+                      emoji: '⚙️',
+                      title: 'Settings',
+                      route: '/settings',
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: const Icon(Icons.logout, color: Colors.red),
+                      title: const Text(
+                        '🚪 Logout',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                      onTap: _logout,
+                    ),
+                  ],
+                ),
+              ),
 
-            /// 🔹 SALES CHART
-            const SizedBox(
-              height: 250,
-              child: SalesChartWidget(),
-            ),
+              const SizedBox(height: 20),
 
-            const SizedBox(height: 20),
+              /// 🔥 SALES GRAPH (auto refresh)
+              const SizedBox(
+                height: 250,
+                child: SalesChartWidget(),
+              ),
 
-            /// 🔹 LOW STOCK
-            const LowStockWidget(),
-          ],
+              const SizedBox(height: 20),
+
+              /// 🔥 LOW STOCK WARNING (auto refresh)
+              const LowStockWidget(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// 🔹 Menu Tile Helper
+  /// Menu Tile Helper
   Widget _menuTile({
     required IconData icon,
     required String emoji,
@@ -206,7 +224,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           title: Text('$emoji  $title'),
           onTap: () async {
             await Navigator.pushNamed(context, route);
-            _loadStats(); // 🔥 instant refresh after return
+            _loadStats(); // instant refresh
           },
         ),
         const Divider(height: 1),

@@ -30,7 +30,6 @@ class BackupService {
 
       await file.writeAsString(jsonEncode(data));
 
-      // Insert backup record
       await SQLiteHelper.insertBackup({
         "filename": "backup.json",
         "created_at": DateTime.now().toIso8601String(),
@@ -42,7 +41,7 @@ class BackupService {
     }
   }
 
-  /// Restore Backup
+  /// Restore All Data
   Future<String> restoreData() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
@@ -54,9 +53,10 @@ class BackupService {
       final data = jsonDecode(content);
 
       await SQLiteHelper.clearAllData();
-      await SQLiteHelper.insertProducts(List<Map<String, dynamic>>.from(data['products']));
-      await SQLiteHelper.insertSales(List<Map<String, dynamic>>.from(data['sales']));
-      await SQLiteHelper.insertCustomers(List<Map<String, dynamic>>.from(data['customers']));
+
+      if (data['products'] != null) await restoreProducts(data['products']);
+      if (data['sales'] != null) await restoreSales(data['sales']);
+      if (data['customers'] != null) await restoreCustomers(data['customers']);
 
       return "Restore completed successfully";
     } catch (e) {
@@ -64,20 +64,7 @@ class BackupService {
     }
   }
 
-  Future<String> getBackupFilePath() async {
-    final dir = await getApplicationDocumentsDirectory();
-    return "${dir.path}/backup.json";
-  }
-
-  Future<void> autoBackupOnStartup() async {
-    final result = await backupData();
-    print("[Auto Backup] Status: $result");
-  }
-
-  Future<List<Map<String, dynamic>>> getBackupHistory() async {
-    return await SQLiteHelper.getBackups();
-  }
-
+  /// Restore from a specific backup file
   Future<String> restoreDataFromBackup(String filename) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
@@ -89,13 +76,45 @@ class BackupService {
       final data = jsonDecode(content);
 
       await SQLiteHelper.clearAllData();
-      await SQLiteHelper.insertProducts(List<Map<String, dynamic>>.from(data['products']));
-      await SQLiteHelper.insertSales(List<Map<String, dynamic>>.from(data['sales']));
-      await SQLiteHelper.insertCustomers(List<Map<String, dynamic>>.from(data['customers']));
+
+      if (data['products'] != null) await restoreProducts(data['products']);
+      if (data['sales'] != null) await restoreSales(data['sales']);
+      if (data['customers'] != null) await restoreCustomers(data['customers']);
 
       return "Restore completed successfully";
     } catch (e) {
       return "Restore failed: $e";
     }
+  }
+
+  Future<void> restoreProducts(List<dynamic> products) async {
+    final productList = products.map((e) => Map<String, dynamic>.from(e)).toList();
+    await SQLiteHelper.insertProducts(productList);
+  }
+
+  Future<void> restoreSales(List<dynamic> sales) async {
+    final saleList = sales.map((e) => Map<String, dynamic>.from(e)).toList();
+    await SQLiteHelper.insertSales(saleList);
+  }
+
+  Future<void> restoreCustomers(List<dynamic> customers) async {
+    final customerList = customers.map((e) => Map<String, dynamic>.from(e)).toList();
+    await SQLiteHelper.insertCustomers(customerList);
+  }
+
+  Future<String> getBackupFilePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return "${dir.path}/backup.json";
+  }
+
+  /// Auto backup on app startup
+  Future<void> autoBackupOnStartup() async {
+    final result = await backupData();
+    print("[Auto Backup] Status: $result");
+  }
+
+  /// Backup history
+  Future<List<Map<String, dynamic>>> getBackupHistory() async {
+    return await SQLiteHelper.getBackups();
   }
 }

@@ -16,6 +16,10 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
   bool isProcessing = false;
   String processingMessage = "";
 
+  bool autoBackupEnabled = false; // New: Auto Backup toggle
+  bool cloudBackupEnabled = true; // New: Cloud Backup toggle
+  int backupFrequencyHours = 24; // New: Frequency (hours)
+
   final BackupService _backupService = BackupService();
   final DriveService _driveService = DriveService();
 
@@ -27,25 +31,31 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
 
     final result = await _backupService.backupData();
 
-    setState(() => processingMessage = "Backup complete. Uploading to Drive...");
+    if (cloudBackupEnabled) {
+      setState(() => processingMessage = "Uploading to Drive...");
+      try {
+        final filePath = await _backupService.getBackupFilePath();
+        final file = File(filePath);
+        final drivePath = await _driveService.uploadFile(file);
 
-    // Google Drive backup
-    try {
-      final filePath = await _backupService.getBackupFilePath();
-      final file = File(filePath);
-      final drivePath = await _driveService.uploadFile(file);
-
-      setState(() => processingMessage = "Backup uploaded to Drive at $drivePath");
+        setState(() => processingMessage = "Backup uploaded to Drive at $drivePath");
+        NotificationService().showNotification(
+          context: context,
+          title: "Backup Completed",
+          body: "$result\nUploaded to Drive: $drivePath",
+        );
+      } catch (e) {
+        NotificationService().showNotification(
+          context: context,
+          title: "Drive Backup Failed",
+          body: e.toString(),
+        );
+      }
+    } else {
       NotificationService().showNotification(
         context: context,
         title: "Backup Completed",
-        body: "$result\nUploaded to Drive: $drivePath",
-      );
-    } catch (e) {
-      NotificationService().showNotification(
-        context: context,
-        title: "Drive Backup Failed",
-        body: e.toString(),
+        body: result,
       );
     }
 
@@ -61,38 +71,39 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
       processingMessage = "Restoring from local backup...";
     });
 
-    // Local restore
     final result = await _backupService.restoreData();
 
-    setState(() {
-      processingMessage = "Checking Drive backup...";
-    });
-
-    // Optionally restore from Drive
-    try {
-      final driveFileName = "backup.json";
-      if (await _driveService.driveBackupExists(driveFileName)) {
-        final dir = await _backupService.getBackupFilePath();
-        final drivePath = File(dir); // Simulated drive path
-        await _backupService.restoreDataFromBackup(driveFileName);
-        setState(() => processingMessage = "Restored from Drive backup.");
+    if (cloudBackupEnabled) {
+      setState(() => processingMessage = "Checking Drive backup...");
+      try {
+        final driveFileName = "backup.json";
+        if (await _driveService.driveBackupExists(driveFileName)) {
+          await _backupService.restoreDataFromBackup(driveFileName);
+          setState(() => processingMessage = "Restored from Drive backup.");
+          NotificationService().showNotification(
+            context: context,
+            title: "Restore Completed",
+            body: "$result\nRestored from Drive backup",
+          );
+        } else {
+          NotificationService().showNotification(
+            context: context,
+            title: "Restore Completed",
+            body: result,
+          );
+        }
+      } catch (e) {
         NotificationService().showNotification(
           context: context,
-          title: "Restore Completed",
-          body: "$result\nRestored from Drive backup",
-        );
-      } else {
-        NotificationService().showNotification(
-          context: context,
-          title: "Restore Completed",
-          body: result,
+          title: "Restore Failed",
+          body: e.toString(),
         );
       }
-    } catch (e) {
+    } else {
       NotificationService().showNotification(
         context: context,
-        title: "Restore Failed",
-        body: e.toString(),
+        title: "Restore Completed",
+        body: result,
       );
     }
 
@@ -116,19 +127,56 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
             Text(processingMessage),
           ],
         )
-            : Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            PrimaryButton(
-              text: "Backup Now",
-              onPressed: _handleBackup,
-            ),
-            const SizedBox(height: 20),
-            PrimaryButton(
-              text: "Restore Backup",
-              onPressed: _handleRestore,
-            ),
-          ],
+            : Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SwitchListTile(
+                title: const Text("Enable Auto Backup"),
+                value: autoBackupEnabled,
+                onChanged: (val) => setState(() => autoBackupEnabled = val),
+              ),
+              if (autoBackupEnabled)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Backup Frequency (hours)"),
+                    SizedBox(
+                      width: 60,
+                      child: TextFormField(
+                        initialValue: backupFrequencyHours.toString(),
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (val) {
+                          final parsed = int.tryParse(val);
+                          if (parsed != null && parsed > 0) {
+                            backupFrequencyHours = parsed;
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              SwitchListTile(
+                title: const Text("Enable Cloud Backup"),
+                value: cloudBackupEnabled,
+                onChanged: (val) => setState(() => cloudBackupEnabled = val),
+              ),
+              const SizedBox(height: 20),
+              PrimaryButton(
+                text: "Backup Now",
+                onPressed: _handleBackup,
+              ),
+              const SizedBox(height: 20),
+              PrimaryButton(
+                text: "Restore Backup",
+                onPressed: _handleRestore,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,9 +1,12 @@
+import 'dart:async'; // ✅ ADD
 import 'package:flutter/material.dart';
 import '../../database/sqlite_helper.dart';
-import '../../widgets/empty_state.dart'; // fixed import
+import '../../widgets/empty_state.dart';
 
 class LowStockWidget extends StatefulWidget {
-  const LowStockWidget({super.key});
+  final VoidCallback? onUpdate; // optional callback to refresh dashboard
+
+  const LowStockWidget({super.key, this.onUpdate});
 
   @override
   State<LowStockWidget> createState() => _LowStockWidgetState();
@@ -11,18 +14,36 @@ class LowStockWidget extends StatefulWidget {
 
 class _LowStockWidgetState extends State<LowStockWidget> {
   List<Map<String, dynamic>> lowStock = [];
+  Timer? _refreshTimer; // ✅ ADD
 
   @override
   void initState() {
     super.initState();
     _loadLowStock();
+
+    /// 🔥 AUTO REFRESH (real-time low stock warning)
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 2),
+          (_) => _loadLowStock(),
+    );
   }
 
   Future<void> _loadLowStock() async {
     final products = await SQLiteHelper.getProducts();
+
+    if (!mounted) return;
+
     setState(() {
       lowStock = products.where((p) => (p['stock'] ?? 0) < 5).toList();
     });
+
+    widget.onUpdate?.call(); // 🔹 Trigger dashboard refresh if callback exists
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel(); // ✅ ADD (memory safe)
+    super.dispose();
   }
 
   @override

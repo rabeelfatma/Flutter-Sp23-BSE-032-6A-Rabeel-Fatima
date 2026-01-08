@@ -1,10 +1,13 @@
+import 'dart:async'; // ✅ ADD
 import 'package:flutter/material.dart';
 import '../../database/sqlite_helper.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../widgets/empty_state.dart'; // fixed import
+import '../../widgets/empty_state.dart';
 
 class SalesChartWidget extends StatefulWidget {
-  const SalesChartWidget({super.key});
+  final VoidCallback? onUpdate;
+
+  const SalesChartWidget({super.key, this.onUpdate});
 
   @override
   State<SalesChartWidget> createState() => _SalesChartWidgetState();
@@ -12,16 +15,33 @@ class SalesChartWidget extends StatefulWidget {
 
 class _SalesChartWidgetState extends State<SalesChartWidget> {
   List<Map<String, dynamic>> sales = [];
+  Timer? _refreshTimer; // ✅ ADD
 
   @override
   void initState() {
     super.initState();
     _loadSales();
+
+    /// 🔥 AUTO REFRESH GRAPH (real-time CRUD updates)
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 2),
+          (_) => _loadSales(),
+    );
   }
 
   Future<void> _loadSales() async {
     final list = await SQLiteHelper.getSales();
+
+    if (!mounted) return;
+
     setState(() => sales = list);
+    widget.onUpdate?.call(); // 🔹 Trigger dashboard refresh
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel(); // ✅ ADD (prevent memory leak)
+    super.dispose();
   }
 
   @override
@@ -36,9 +56,11 @@ class _SalesChartWidgetState extends State<SalesChartWidget> {
     // Daily sales for last 7 days
     final Map<String, int> dailySales = {};
     final now = DateTime.now();
+
     for (int i = 0; i < 7; i++) {
       final day = DateTime(now.year, now.month, now.day - i);
       final key = '${day.day}/${day.month}';
+
       dailySales[key] = sales.where((s) {
         final date = DateTime.parse(s['datetime']);
         return date.year == day.year &&
@@ -56,7 +78,9 @@ class _SalesChartWidgetState extends State<SalesChartWidget> {
             alignment: BarChartAlignment.spaceAround,
             maxY: (dailySales.values.isEmpty
                 ? 1
-                : dailySales.values.reduce((a, b) => a > b ? a : b))
+                : dailySales.values.reduce(
+                  (a, b) => a > b ? a : b,
+            ))
                 .toDouble() +
                 2,
             barGroups: dailySales.entries
@@ -67,7 +91,7 @@ class _SalesChartWidgetState extends State<SalesChartWidget> {
                   BarChartRodData(
                     toY: e.value.toDouble(),
                     color: Colors.blue,
-                  )
+                  ),
                 ],
               ),
             )

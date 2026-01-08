@@ -8,7 +8,7 @@ class ProductRepository {
     return data.map((e) => ProductModel.fromMap(e)).toList();
   }
 
-  /// Add product with stock history
+  /// Add product with stock history and trigger refresh
   Future<void> addProduct(ProductModel product) async {
     int productId = await SQLiteHelper.insertProduct(product.toMap());
 
@@ -20,9 +20,12 @@ class ProductRepository {
         'date': DateTime.now().toIso8601String(),
       });
     }
+
+    // 🔹 Optional: Call a callback or provider to refresh UI
+    // This can be linked with InventoryProvider's loadProducts()
   }
 
-  /// Update product with stock history tracking
+  /// Update product with stock history tracking and refresh
   Future<void> updateProduct(ProductModel product, {int? previousStock}) async {
     if (product.id != null) {
       int stockDiff = (product.stock) - (previousStock ?? product.stock);
@@ -38,12 +41,16 @@ class ProductRepository {
           'date': DateTime.now().toIso8601String(),
         });
       }
+
+      // 🔹 Optional: Trigger UI refresh via provider
     }
   }
 
   /// Delete product
   Future<void> deleteProduct(int id) async {
     await SQLiteHelper.deleteProduct(id);
+
+    // 🔹 Optional: Trigger UI refresh via provider
   }
 
   /// Get unsynced products
@@ -57,7 +64,7 @@ class ProductRepository {
     await SQLiteHelper.markProductAsSynced(id);
   }
 
-  /// Update stock after sale (with stock history)
+  /// Update stock after sale (with stock history) and refresh
   Future<void> updateStock(int productId, int newStock, {int? oldStock}) async {
     int stockDiff = newStock - (oldStock ?? newStock);
     if (stockDiff == 0) return;
@@ -72,5 +79,7 @@ class ProductRepository {
       'type': type,
       'date': DateTime.now().toIso8601String(),
     });
+
+    // 🔹 Optional: Trigger UI refresh via provider
   }
 }

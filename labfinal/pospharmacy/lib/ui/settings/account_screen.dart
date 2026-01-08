@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/primary_button.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart'; // <-- Added ThemeProvider import
 
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
@@ -9,6 +10,7 @@ class AccountScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context); // <-- Added
 
     return Scaffold(
       appBar: AppBar(title: const Text("Account Settings")),
@@ -38,9 +40,12 @@ class AccountScreen extends StatelessWidget {
             leading: const Icon(Icons.color_lens),
             title: const Text("Theme"),
             subtitle: const Text("Switch between light and dark mode"),
-            onTap: () {
-              // TODO: Implement theme toggle
-            },
+            trailing: Switch(
+              value: themeProvider.isDarkMode,
+              onChanged: (value) {
+                themeProvider.toggleTheme(value);
+              },
+            ),
           ),
           const SizedBox(height: 20),
           PrimaryButton(

@@ -1,10 +1,16 @@
 class BackupModel {
   int? id;
   String filename;
-  String createdAt; // ISO string
+  String createdAt; // ISO 8601 date string
 
-  BackupModel({this.id, required this.filename, required this.createdAt});
+  /// Constructor
+  BackupModel({
+    this.id,
+    required this.filename,
+    required this.createdAt,
+  });
 
+  /// Create BackupModel from Map (e.g., from SQLite query)
   factory BackupModel.fromMap(Map<String, dynamic> map) {
     return BackupModel(
       id: map['id'],
@@ -13,6 +19,7 @@ class BackupModel {
     );
   }
 
+  /// Convert BackupModel to Map (for SQLite insert/update)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -21,7 +28,12 @@ class BackupModel {
     };
   }
 
-  BackupModel copyWith({int? id, String? filename, String? createdAt}) {
+  /// Create a copy with updated fields
+  BackupModel copyWith({
+    int? id,
+    String? filename,
+    String? createdAt,
+  }) {
     return BackupModel(
       id: id ?? this.id,
       filename: filename ?? this.filename,
@@ -29,6 +41,8 @@ class BackupModel {
     );
   }
 
+  /// Debug-friendly string
   @override
-  String toString() => 'Backup(id: $id, filename: $filename, createdAt: $createdAt)';
+  String toString() =>
+      'BackupModel(id: $id, filename: $filename, createdAt: $createdAt)';
 }

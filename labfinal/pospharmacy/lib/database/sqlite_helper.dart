@@ -308,31 +308,45 @@ class SQLiteHelper {
   // ---------------- DATA RESTORATION ----------------
   static Future<void> clearAllData() async {
     final db = await database;
-    await db.delete('products');
-    await db.delete('sales');
-    await db.delete('sale_items');
-    await db.delete('customers');
-    await db.delete('ledger');
+    await db.transaction((txn) async {
+      await txn.delete('sale_items'); // Delete dependent table first
+      await txn.delete('sales');
+      await txn.delete('products');
+      await txn.delete('customers');
+      await txn.delete('ledger');
+    });
   }
 
   static Future<void> insertProducts(List<Map<String, dynamic>> products) async {
     final db = await database;
-    for (var product in products) {
-      await db.insert('products', product);
-    }
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (var product in products) {
+        batch.insert('products', product);
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   static Future<void> insertSales(List<Map<String, dynamic>> sales) async {
     final db = await database;
-    for (var sale in sales) {
-      await db.insert('sales', sale);
-    }
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (var sale in sales) {
+        batch.insert('sales', sale);
+      }
+      await batch.commit(noResult: true);
+    });
   }
 
   static Future<void> insertCustomers(List<Map<String, dynamic>> customers) async {
     final db = await database;
-    for (var customer in customers) {
-      await db.insert('customers', customer);
-    }
+    await db.transaction((txn) async {
+      final batch = txn.batch();
+      for (var customer in customers) {
+        batch.insert('customers', customer);
+      }
+      await batch.commit(noResult: true);
+    });
   }
 }

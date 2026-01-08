@@ -33,17 +33,18 @@ import '../ui/reports/reports_home_screen.dart';
 import '../ui/settings/settings_screen.dart';
 import '../ui/settings/backup_settings_screen.dart';
 import '../ui/settings/restore_screen.dart';
+import '../ui/settings/backup_history_screen.dart';
 import '../ui/settings/account_screen.dart';
 import '../ui/settings/profile_edit_screen.dart';
 import '../ui/settings/change_password_screen.dart';
 import '../ui/settings/notification_settings_screen.dart';
-import '../ui/settings/backup_history_screen.dart';
 
 // Models
 import '../models/product_model.dart';
 import '../models/ledger_model.dart';
 
 class AppRoutes {
+  /// ✅ All routes
   static final Map<String, WidgetBuilder> routes = {
     // Auth
     '/login': (_) => const LoginScreen(),
@@ -73,9 +74,12 @@ class AppRoutes {
 
     // Settings
     '/settings': (_) => const SettingsScreen(),
+
+    /// 🔥 Backup / Restore Routes
     '/backup-settings': (_) => const BackupSettingsScreen(),
-    '/restore-settings': (_) => const RestoreScreen(),
+    '/restore-screen': (_) => const RestoreScreen(),
     '/backup-history': (_) => const BackupHistoryScreen(),
+
     '/account': (_) => const AccountScreen(),
     '/profile-edit': (_) => const ProfileEditScreen(),
     '/change-password': (_) => const ChangePasswordScreen(),
