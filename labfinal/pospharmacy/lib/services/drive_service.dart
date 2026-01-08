@@ -1,16 +1,8 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
-/// DriveService (SIMULATED)
-/// ------------------------
-/// University / PDF purpose ke liye
-/// Google Drive ki jagah local export use kiya gaya hai
-/// (No external dependencies, No errors)
-
 class DriveService {
-
-  /// Simulate "Upload to Drive"
-  /// Actually file ko export folder mein copy karta hai
+  /// Upload to "Drive" (simulated local folder)
   Future<String> uploadFile(File backupFile) async {
     final directory = await getApplicationDocumentsDirectory();
     final exportDir = Directory('${directory.path}/drive_backup');
@@ -19,16 +11,13 @@ class DriveService {
       await exportDir.create(recursive: true);
     }
 
-    final newFile = File(
-      '${exportDir.path}/${backupFile.uri.pathSegments.last}',
-    );
-
+    final newFile = File('${exportDir.path}/${backupFile.uri.pathSegments.last}');
     await backupFile.copy(newFile.path);
 
     return newFile.path;
   }
 
-  /// Check if "Drive backup" exists
+  /// Check if backup exists in "Drive"
   Future<bool> driveBackupExists(String fileName) async {
     final directory = await getApplicationDocumentsDirectory();
     final file = File('${directory.path}/drive_backup/$fileName');

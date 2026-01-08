@@ -206,7 +206,6 @@ class SQLiteHelper {
 
   static Future<int> insertSaleItem(Map<String, dynamic> row) async {
     final db = await database;
-    // Ensure sale_id and product_id are not null
     if (row['sale_id'] == null || row['product_id'] == null) {
       throw Exception("sale_id and product_id cannot be null");
     }
@@ -297,5 +296,35 @@ class SQLiteHelper {
   static Future<List<Map<String, dynamic>>> getBackups() async {
     final db = await database;
     return db.query('backups', orderBy: 'created_at DESC');
+  }
+
+  // ---------------- DATA RESTORATION ----------------
+  static Future<void> clearAllData() async {
+    final db = await database;
+    await db.delete('products');
+    await db.delete('sales');
+    await db.delete('customers');
+    // Agar chahen to ledger aur sale_items bhi add kiya ja sakta hai
+  }
+
+  static Future<void> insertProducts(List<Map<String, dynamic>> products) async {
+    final db = await database;
+    for (var product in products) {
+      await db.insert('products', product);
+    }
+  }
+
+  static Future<void> insertSales(List<Map<String, dynamic>> sales) async {
+    final db = await database;
+    for (var sale in sales) {
+      await db.insert('sales', sale);
+    }
+  }
+
+  static Future<void> insertCustomers(List<Map<String, dynamic>> customers) async {
+    final db = await database;
+    for (var customer in customers) {
+      await db.insert('customers', customer);
+    }
   }
 }

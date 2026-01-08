@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 // 🔔 Notification Service
 import 'services/notification_service.dart';
+import 'services/backup_service.dart'; // <-- Auto Backup import
 
 // Core
 import 'core/constants/app_strings.dart';
@@ -30,6 +31,9 @@ Future<void> main() async {
   );
 
   await NotificationService().init();
+
+  // 🔥 AUTO BACKUP AT APP STARTUP
+  await BackupService().autoBackupOnStartup();
 
   runApp(
     MultiProvider(

@@ -32,6 +32,7 @@ class SettingsScreen extends StatelessWidget {
 
           const Divider(),
 
+          /// Manual Backup
           ListTile(
             leading: const Icon(Icons.backup),
             title: const Text("Backup Data"),
@@ -39,6 +40,7 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.pushNamed(context, '/backup-settings'),
           ),
 
+          /// Restore Backup
           ListTile(
             leading: const Icon(Icons.restore),
             title: const Text("Restore Data"),
@@ -46,6 +48,17 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.pushNamed(context, '/restore-settings'),
           ),
 
+          /// 🔹 Backup History (NEW)
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: const Text("Backup History"),
+            onTap: () =>
+                Navigator.pushNamed(context, '/backup-history'),
+          ),
+
+          const Divider(),
+
+          /// Account Settings
           ListTile(
             leading: const Icon(Icons.account_circle),
             title: const Text("Account Settings"),

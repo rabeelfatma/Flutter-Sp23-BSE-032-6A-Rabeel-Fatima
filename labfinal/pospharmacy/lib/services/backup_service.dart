@@ -4,46 +4,98 @@ import 'package:path_provider/path_provider.dart';
 import '../database/sqlite_helper.dart';
 
 class BackupService {
-  // Create JSON backup
-  Future<String> backup() async {
-    final products = await SQLiteHelper.getProducts();
-    final sales = await SQLiteHelper.getSales();
-    final customers = await SQLiteHelper.getCustomers();
+  static final BackupService _instance = BackupService._internal();
+  factory BackupService() => _instance;
+  BackupService._internal();
 
-    final data = {
-      'products': products,
-      'sales': sales,
-      'customers': customers,
-    };
+  /// Manual Backup
+  Future<String> backupData() async {
+    try {
+      final products = await SQLiteHelper.getProducts();
+      final sales = await SQLiteHelper.getSales();
+      final customers = await SQLiteHelper.getCustomers();
 
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/backup.json');
-    await file.writeAsString(jsonEncode(data));
-    return file.path;
+      if (products.isEmpty && sales.isEmpty && customers.isEmpty) {
+        return "Nothing to backup";
+      }
+
+      final data = {
+        "products": products,
+        "sales": sales,
+        "customers": customers,
+      };
+
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File("${dir.path}/backup.json");
+
+      await file.writeAsString(jsonEncode(data));
+
+      // Insert backup record
+      await SQLiteHelper.insertBackup({
+        "filename": "backup.json",
+        "created_at": DateTime.now().toIso8601String(),
+      });
+
+      return "Backup completed successfully";
+    } catch (e) {
+      return "Backup failed: ${e.toString()}";
+    }
   }
 
-  // Restore from JSON backup
-  Future<void> restore() async {
+  /// Restore Backup
+  Future<String> restoreData() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File("${dir.path}/backup.json");
+
+      if (!file.existsSync()) return "No backup file found";
+
+      final content = await file.readAsString();
+      final data = jsonDecode(content);
+
+      await SQLiteHelper.clearAllData();
+      await SQLiteHelper.insertProducts(List<Map<String, dynamic>>.from(data['products']));
+      await SQLiteHelper.insertSales(List<Map<String, dynamic>>.from(data['sales']));
+      await SQLiteHelper.insertCustomers(List<Map<String, dynamic>>.from(data['customers']));
+
+      return "Restore completed successfully";
+    } catch (e) {
+      return "Restore failed: ${e.toString()}";
+    }
+  }
+
+  Future<String> getBackupFilePath() async {
     final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/backup.json');
+    return "${dir.path}/backup.json";
+  }
 
-    if (!await file.exists()) return;
+  Future<void> autoBackupOnStartup() async {
+    final result = await backupData();
+    print("[Auto Backup] Status: $result");
+  }
 
-    final content = await file.readAsString();
-    final data = jsonDecode(content);
+  Future<List<Map<String, dynamic>>> getBackupHistory() async {
+    return await SQLiteHelper.getBackups();
+  }
 
-    final products = data['products'] as List<dynamic>;
-    final sales = data['sales'] as List<dynamic>;
-    final customers = data['customers'] as List<dynamic>;
+  Future<String> restoreDataFromBackup(String filename) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File("${dir.path}/$filename");
 
-    for (var p in products) {
-      await SQLiteHelper.insertProduct(Map<String, dynamic>.from(p));
-    }
-    for (var s in sales) {
-      await SQLiteHelper.insertSale(Map<String, dynamic>.from(s));
-    }
-    for (var c in customers) {
-      await SQLiteHelper.insertCustomer(Map<String, dynamic>.from(c));
+      if (!file.existsSync()) return "Backup file not found";
+
+      final content = await file.readAsString();
+      final data = jsonDecode(content);
+
+      await SQLiteHelper.clearAllData();
+      await SQLiteHelper.insertProducts(List<Map<String, dynamic>>.from(data['products']));
+      await SQLiteHelper.insertSales(List<Map<String, dynamic>>.from(data['sales']));
+      await SQLiteHelper.insertCustomers(List<Map<String, dynamic>>.from(data['customers']));
+
+      return "Restore completed successfully";
+    } catch (e) {
+      return "Restore failed: $e";
     }
   }
 }
