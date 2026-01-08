@@ -137,6 +137,13 @@ class SQLiteHelper {
     return db.query('products');
   }
 
+  static Future<Map<String, dynamic>?> getProductById(int id) async {
+    final db = await database;
+    final result = await db.query('products', where: 'id = ?', whereArgs: [id]);
+    if (result.isEmpty) return null;
+    return result.first;
+  }
+
   static Future<int> updateProduct(int id, Map<String, dynamic> row) async {
     final db = await database;
     return db.update('products', row, where: 'id = ?', whereArgs: [id]);
@@ -303,8 +310,9 @@ class SQLiteHelper {
     final db = await database;
     await db.delete('products');
     await db.delete('sales');
+    await db.delete('sale_items');
     await db.delete('customers');
-    // Agar chahen to ledger aur sale_items bhi add kiya ja sakta hai
+    await db.delete('ledger');
   }
 
   static Future<void> insertProducts(List<Map<String, dynamic>> products) async {

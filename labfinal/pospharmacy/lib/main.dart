@@ -19,6 +19,7 @@ import 'routes/app_routes.dart';
 // Providers
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
+import 'providers/cart_provider.dart'; // <-- Added CartProvider
 
 // Firebase
 import 'firebase_options.dart';
@@ -43,6 +44,9 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider<ThemeProvider>(
           create: (_) => ThemeProvider(),
+        ),
+        ChangeNotifierProvider<CartProvider>( // <-- Added CartProvider
+          create: (_) => CartProvider(),
         ),
       ],
       child: const MyApp(),

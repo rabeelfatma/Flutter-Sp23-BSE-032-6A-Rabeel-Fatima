@@ -19,15 +19,21 @@ class SyncManager {
     final unsyncedSales = await db.query('sales', where: 'synced = 0');
 
     for (final sale in unsyncedSales) {
-      // Call static method from FirestoreService
-      await FirestoreService.uploadSale(sale);
+      try {
+        // Call static method from FirestoreService
+        await FirestoreService.uploadSale(sale);
 
-      await db.update(
-        'sales',
-        {'synced': 1},
-        where: 'id = ?',
-        whereArgs: [sale['id']],
-      );
+        // Mark sale as synced only if upload succeeds
+        await db.update(
+          'sales',
+          {'synced': 1},
+          where: 'id = ?',
+          whereArgs: [sale['id']],
+        );
+      } catch (e) {
+        print('Failed to sync sale ID ${sale['id']}: $e');
+        // Optionally, log this to a local table or retry later
+      }
     }
   }
 
@@ -38,15 +44,21 @@ class SyncManager {
     final unsyncedProducts = await db.query('products', where: 'synced = 0');
 
     for (final product in unsyncedProducts) {
-      // Call static method from FirestoreService
-      await FirestoreService.uploadProduct(product);
+      try {
+        // Call static method from FirestoreService
+        await FirestoreService.uploadProduct(product);
 
-      await db.update(
-        'products',
-        {'synced': 1},
-        where: 'id = ?',
-        whereArgs: [product['id']],
-      );
+        // Mark product as synced only if upload succeeds
+        await db.update(
+          'products',
+          {'synced': 1},
+          where: 'id = ?',
+          whereArgs: [product['id']],
+        );
+      } catch (e) {
+        print('Failed to sync product ID ${product['id']}: $e');
+        // Optionally, log this to a local table or retry later
+      }
     }
   }
 }

@@ -7,12 +7,16 @@ class ReceiptScreen extends StatelessWidget {
   final Map<int, int> cart;
   final List<ProductModel> products;
   final double totalAmount;
+  final double discount; // added
+  final double tax; // added
 
   const ReceiptScreen({
     super.key,
     required this.cart,
     required this.products,
     required this.totalAmount,
+    this.discount = 0,
+    this.tax = 0,
   });
 
   /// Share receipt as PDF
@@ -36,6 +40,12 @@ class ReceiptScreen extends StatelessWidget {
                   style: pw.TextStyle(fontSize: 16));
             }),
             pw.Divider(),
+            if (discount > 0)
+              pw.Text('Discount: $discount%',
+                  style: pw.TextStyle(fontSize: 16)),
+            if (tax > 0)
+              pw.Text('Tax: $tax%', style: pw.TextStyle(fontSize: 16)),
+            pw.Divider(),
             pw.Text('Total: \$${totalAmount.toStringAsFixed(2)}',
                 style: pw.TextStyle(
                     fontSize: 20, fontWeight: pw.FontWeight.bold)),
@@ -51,46 +61,50 @@ class ReceiptScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Receipt')), // removed const
+      appBar: AppBar(title: const Text('Receipt')),
       body: Padding(
-        padding: EdgeInsets.all(16), // removed const
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Receipt',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)), // removed const
-            SizedBox(height: 20), // removed const
+            const Text('Receipt',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
             Expanded(
               child: ListView(
                 children: cart.entries.map((entry) {
                   final product =
                   products.firstWhere((p) => p.id == entry.key);
                   return Padding(
-                    padding: EdgeInsets.symmetric(vertical: 4), // removed const
+                    padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Text(
                       '${product.name} x${entry.value} = \$${(product.price * entry.value).toStringAsFixed(2)}',
-                      style: TextStyle(fontSize: 16), // removed const
+                      style: const TextStyle(fontSize: 16),
                     ),
                   );
                 }).toList(),
               ),
             ),
-            Divider(), // removed const
+            if (discount > 0)
+              Text('Discount: $discount%', style: const TextStyle(fontSize: 16)),
+            if (tax > 0)
+              Text('Tax: $tax%', style: const TextStyle(fontSize: 16)),
+            const Divider(),
             Text('Total: \$${totalAmount.toStringAsFixed(2)}',
-                style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.bold)), // removed const
-            SizedBox(height: 20), // removed const
+                style: const TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 ElevatedButton(
                   onPressed: _sharePDF,
-                  child: Text('Share as PDF'), // removed const
+                  child: const Text('Share as PDF'),
                 ),
                 ElevatedButton(
                   onPressed: () =>
                       Navigator.popUntil(context, (route) => route.isFirst),
-                  child: Text('Done'), // removed const
+                  child: const Text('Done'),
                 ),
               ],
             ),

@@ -37,7 +37,7 @@ import '../ui/settings/account_screen.dart';
 import '../ui/settings/profile_edit_screen.dart';
 import '../ui/settings/change_password_screen.dart';
 import '../ui/settings/notification_settings_screen.dart';
-import '../ui/settings/backup_history_screen.dart'; // <-- New backup history screen route
+import '../ui/settings/backup_history_screen.dart';
 
 // Models
 import '../models/product_model.dart';
@@ -75,7 +75,7 @@ class AppRoutes {
     '/settings': (_) => const SettingsScreen(),
     '/backup-settings': (_) => const BackupSettingsScreen(),
     '/restore-settings': (_) => const RestoreScreen(),
-    '/backup-history': (_) => const BackupHistoryScreen(), // <-- Backup history route
+    '/backup-history': (_) => const BackupHistoryScreen(),
     '/account': (_) => const AccountScreen(),
     '/profile-edit': (_) => const ProfileEditScreen(),
     '/change-password': (_) => const ChangePasswordScreen(),
@@ -95,7 +95,6 @@ class AppRoutes {
     );
   }
 
-  /// Ledger Detail route (view/edit a specific entry)
   static Route<dynamic> ledgerDetail(LedgerModel entry) {
     return MaterialPageRoute(
       builder: (_) => LedgerDetailScreen(entry: entry),
