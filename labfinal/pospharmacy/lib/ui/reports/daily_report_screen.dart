@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../database/sqlite_helper.dart';
+import '../../repositories/sales_repository.dart';
+import '../../models/sale_model.dart';
 import '../../widgets/empty_state.dart';
 
 class DailyReportScreen extends StatefulWidget {
@@ -10,7 +11,9 @@ class DailyReportScreen extends StatefulWidget {
 }
 
 class _DailyReportScreenState extends State<DailyReportScreen> {
-  List<Map<String, dynamic>> sales = [];
+  final SalesRepository _repository = SalesRepository();
+
+  List<SaleModel> sales = [];
   double totalAmount = 0;
 
   @override
@@ -20,20 +23,16 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
   }
 
   Future<void> _loadDailySales() async {
-    final allSales = await SQLiteHelper.getSales();
     final today = DateTime.now();
-    final filtered = allSales.where((s) {
-      final date = DateTime.parse(s['datetime']);
-      return date.year == today.year &&
-          date.month == today.month &&
-          date.day == today.day;
-    }).toList();
+    final result = await _repository.getDailySales(today);
 
     double sum = 0;
-    for (var s in filtered) sum += s['amount']?.toDouble() ?? 0;
+    for (var s in result) {
+      sum += s.amount;
+    }
 
     setState(() {
-      sales = filtered;
+      sales = result;
       totalAmount = sum;
     });
   }
@@ -45,7 +44,10 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: sales.isEmpty
-            ? EmptyState(message: "No sales today", icon: Icons.today)
+            ? const EmptyState(
+          message: "No sales today",
+          icon: Icons.today,
+        )
             : Column(
           children: [
             Expanded(
@@ -54,17 +56,20 @@ class _DailyReportScreenState extends State<DailyReportScreen> {
                 itemBuilder: (_, index) {
                   final s = sales[index];
                   return ListTile(
-                    title: Text(s['item']),
-                    subtitle: Text("Amount: \$${s['amount']}"),
-                    trailing: Text(s['datetime']),
+                    leading: const Icon(Icons.shopping_cart),
+                    title: Text("Sale #${s.id}"),
+                    subtitle:
+                    Text("Amount: \$${s.amount.toStringAsFixed(2)}"),
+                    trailing: Text(s.datetime),
                   );
                 },
               ),
             ),
+            const SizedBox(height: 10),
             Text(
-              "Total Sales: \$${totalAmount.toStringAsFixed(2)}",
+              "Total Sales Today: \$${totalAmount.toStringAsFixed(2)}",
               style: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 16),
+                  fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         ),

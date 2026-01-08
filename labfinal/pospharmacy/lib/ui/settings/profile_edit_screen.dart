@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/primary_button.dart';
 import '../../services/notification_service.dart';
 import '../../providers/auth_provider.dart';
@@ -19,8 +18,10 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
+
   bool _loading = false;
   File? _profileImage;
+  String? _savedImagePath;
 
   @override
   void initState() {
@@ -29,46 +30,58 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   }
 
   void _loadProfile() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    nameController.text = authProvider.userName ?? "";
-    emailController.text = authProvider.userEmail ?? "";
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    nameController.text = auth.userName ?? "";
+    emailController.text = auth.userEmail ?? "";
+    _savedImagePath = auth.profileImagePath;
+    if (_savedImagePath != null) {
+      _profileImage = File(_savedImagePath!);
+    }
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() => _profileImage = File(pickedFile.path));
-      final dir = await getApplicationDocumentsDirectory();
-      final assetsDir = Directory('${dir.path}/assets');
-      if (!await assetsDir.exists()) await assetsDir.create(recursive: true);
-      final filePath = '${assetsDir.path}/img.png';
-      await _profileImage!.copy(filePath);
+
+    if (pickedFile == null) return;
+
+    final dir = await getApplicationDocumentsDirectory();
+    final assetsDir = Directory('${dir.path}/profile');
+    if (!await assetsDir.exists()) {
+      await assetsDir.create(recursive: true);
     }
+
+    final path = '${assetsDir.path}/profile.png';
+    final savedFile = await File(pickedFile.path).copy(path);
+
+    setState(() {
+      _profileImage = savedFile;
+      _savedImagePath = path;
+    });
   }
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final uid = authProvider.userEmail;
-    if (uid != null) {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'name': nameController.text.trim(),
-        // optionally: add profileImage URL if uploading to Firebase Storage
-      });
-      authProvider.userName = nameController.text.trim();
-    }
-    setState(() => _loading = false);
 
-    NotificationService().showNotification(
-      context: context,
-      title: "Profile Saved",
-      body: "Your profile details have been updated",
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+
+    final success = await auth.updateProfile(
+      name: nameController.text.trim(),
+      imagePath: _savedImagePath,
     );
 
-    Navigator.pop(context);
+    setState(() => _loading = false);
+
+    if (success) {
+      NotificationService().showNotification(
+        context: context,
+        title: "Profile Saved",
+        body: "Your profile has been updated",
+      );
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -95,7 +108,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     radius: 50,
                     backgroundImage: _profileImage != null
                         ? FileImage(_profileImage!)
-                        : const AssetImage('assets/img.png') as ImageProvider,
+                        : const AssetImage('assets/img.png')
+                    as ImageProvider,
                   ),
                   IconButton(
                     icon: const Icon(Icons.edit),
@@ -112,8 +126,8 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: emailController,
-                decoration: const InputDecoration(labelText: "Email"),
                 readOnly: true,
+                decoration: const InputDecoration(labelText: "Email"),
               ),
               const SizedBox(height: 20),
               PrimaryButton(

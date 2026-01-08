@@ -17,13 +17,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int totalProducts = 0;
   int totalSales = 0;
   int totalCustomers = 0;
-  int totalLedgerEntries = 0; // Ledger count
+  int totalLedgerEntries = 0;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
-    SyncManager.syncAll(); // Optional: sync data with server
+    SyncManager.syncAll();
+  }
+
+  /// 🔥 KEY FIX: Refresh stats whenever dashboard comes back
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadStats();
   }
 
   /// 🔹 Load counts from SQLite
@@ -32,7 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final products = await SQLiteHelper.getProducts();
       final sales = await SQLiteHelper.getSales();
       final customers = await SQLiteHelper.getCustomers();
-      final ledger = await SQLiteHelper.getLedgerEntries(); // Ledger entries
+      final ledger = await SQLiteHelper.getLedgerEntries();
 
       if (!mounted) return;
 
@@ -43,11 +50,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         totalLedgerEntries = ledger.length;
       });
     } catch (e) {
-      debugPrint("Error loading stats: $e");
+      debugPrint("Dashboard stats error: $e");
     }
   }
 
-  /// 🔹 Logout function
+  /// 🔹 Logout
   void _logout() {
     Navigator.pushNamedAndRemoveUntil(
       context,
@@ -62,21 +69,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: const Text('📊 Dashboard'),
         actions: const [
-          SyncIndicator(), // Shows sync status
+          SyncIndicator(),
         ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            /// 🔹 Stats Cards
+            /// 🔹 STATS
             Row(
               children: [
                 Expanded(
                   child: StatCard(
-                    title: 'Products',
+                    title: '📦 Products',
                     count: totalProducts,
                     color: themeColor,
                   ),
@@ -84,7 +91,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: StatCard(
-                    title: 'Sales',
+                    title: '💰 Sales',
                     count: totalSales,
                     color: themeColor,
                   ),
@@ -96,7 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Expanded(
                   child: StatCard(
-                    title: 'Customers',
+                    title: '👥 Customers',
                     count: totalCustomers,
                     color: themeColor,
                   ),
@@ -104,46 +111,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: StatCard(
-                    title: 'Ledger',
+                    title: '📒 Ledger',
                     count: totalLedgerEntries,
                     color: themeColor,
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 20),
 
-            /// 🔹 Quick Navigation Tiles
+            /// 🔹 QUICK MENU
             Card(
               child: Column(
                 children: [
                   _menuTile(
                     icon: Icons.point_of_sale,
+                    emoji: '🧾',
                     title: 'POS / Billing',
                     route: '/pos',
                   ),
                   _menuTile(
                     icon: Icons.inventory,
+                    emoji: '📦',
                     title: 'Inventory',
                     route: '/inventory',
                   ),
                   _menuTile(
                     icon: Icons.people,
+                    emoji: '👥',
                     title: 'Customers',
                     route: '/customers',
                   ),
                   _menuTile(
                     icon: Icons.receipt_long,
+                    emoji: '📒',
                     title: 'Ledger',
-                    route: '/ledger', // Ledger screen route
+                    route: '/ledger',
                   ),
                   _menuTile(
                     icon: Icons.bar_chart,
+                    emoji: '📊',
                     title: 'Reports',
                     route: '/reports',
                   ),
                   _menuTile(
                     icon: Icons.settings,
+                    emoji: '⚙️',
                     title: 'Settings',
                     route: '/settings',
                   ),
@@ -151,7 +165,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text(
-                      'Logout',
+                      '🚪 Logout',
                       style: TextStyle(color: Colors.red),
                     ),
                     onTap: _logout,
@@ -162,7 +176,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const SizedBox(height: 20),
 
-            /// 🔹 Sales Chart
+            /// 🔹 SALES CHART
             const SizedBox(
               height: 250,
               child: SalesChartWidget(),
@@ -170,7 +184,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const SizedBox(height: 20),
 
-            /// 🔹 Low Stock Widget
+            /// 🔹 LOW STOCK
             const LowStockWidget(),
           ],
         ),
@@ -178,9 +192,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  /// 🔹 Menu Tile helper
+  /// 🔹 Menu Tile Helper
   Widget _menuTile({
     required IconData icon,
+    required String emoji,
     required String title,
     required String route,
   }) {
@@ -188,8 +203,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         ListTile(
           leading: Icon(icon),
-          title: Text(title),
-          onTap: () => Navigator.pushNamed(context, route),
+          title: Text('$emoji  $title'),
+          onTap: () async {
+            await Navigator.pushNamed(context, route);
+            _loadStats(); // 🔥 instant refresh after return
+          },
         ),
         const Divider(height: 1),
       ],

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../database/sqlite_helper.dart';
 import '../../models/product_model.dart';
+import '../../providers/cart_provider.dart';
 import '../../widgets/empty_state.dart';
-import 'cart_screen.dart';
 import 'checkout_screen.dart';
 
 class POSScreen extends StatefulWidget {
@@ -14,7 +15,6 @@ class POSScreen extends StatefulWidget {
 
 class _POSScreenState extends State<POSScreen> {
   List<ProductModel> products = [];
-  Map<int, int> cart = {};
 
   @override
   void initState() {
@@ -29,49 +29,34 @@ class _POSScreenState extends State<POSScreen> {
     });
   }
 
-  void _addToCart(ProductModel product) {
+  void _addToCart(Map<int, int> cart, ProductModel product) {
     if (product.id == null) return;
-
     setState(() {
       cart[product.id!] = (cart[product.id!] ?? 0) + 1;
     });
   }
 
-  void _openCart() {
+  void _openCart(Map<int, int> cart) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CartScreen(
-          cart: cart,
-          products: products,
-          onCheckout: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CheckoutScreen(
-                  cart: cart,
-                  products: products,
-                ),
-              ),
-            ).then((_) {
-              cart.clear();
-              _loadProducts();
-            });
-          },
-        ),
+        builder: (_) => CheckoutScreen(products: products),
       ),
-    );
+    ).then((_) => _loadProducts());
   }
 
   @override
   Widget build(BuildContext context) {
+    final cartProvider = Provider.of<CartProvider>(context);
+    final cart = cartProvider.cart;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("POS"),
         actions: [
           IconButton(
             icon: const Icon(Icons.shopping_cart),
-            onPressed: cart.isEmpty ? null : _openCart,
+            onPressed: cart.isEmpty ? null : () => _openCart(cart),
           )
         ],
       ),
@@ -84,11 +69,10 @@ class _POSScreenState extends State<POSScreen> {
         padding: const EdgeInsets.all(16),
         gridDelegate:
         const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 1.2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-        ),
+            crossAxisCount: 2,
+            childAspectRatio: 1.2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10),
         itemCount: products.length,
         itemBuilder: (_, i) {
           final p = products[i];
@@ -97,14 +81,14 @@ class _POSScreenState extends State<POSScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(p.name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold)),
+                    style:
+                    const TextStyle(fontWeight: FontWeight.bold)),
                 Text("Price: \$${p.price}"),
                 Text("Stock: ${p.stock}"),
                 ElevatedButton(
-                  onPressed: () => _addToCart(p),
+                  onPressed: () => _addToCart(cart, p),
                   child: const Text("Add"),
-                )
+                ),
               ],
             ),
           );

@@ -42,7 +42,7 @@ class SQLiteHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         product_id INTEGER,
         change INTEGER,
-        type TEXT,  -- in/out
+        type TEXT,
         date TEXT
       )
     ''');
@@ -60,8 +60,8 @@ class SQLiteHelper {
     await db.execute('''
       CREATE TABLE sale_items(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sale_id INTEGER,
-        product_id INTEGER,
+        sale_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
         quantity INTEGER,
         price REAL
       )
@@ -102,19 +102,17 @@ class SQLiteHelper {
         'ALTER TABLE ledger ADD COLUMN type TEXT DEFAULT "debit"',
       );
     }
-
     if (oldVersion < 3) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS sale_items(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          sale_id INTEGER,
-          product_id INTEGER,
+          sale_id INTEGER NOT NULL,
+          product_id INTEGER NOT NULL,
           quantity INTEGER,
           price REAL
         )
       ''');
     }
-
     if (oldVersion < 4) {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS stock_history(
@@ -208,6 +206,10 @@ class SQLiteHelper {
 
   static Future<int> insertSaleItem(Map<String, dynamic> row) async {
     final db = await database;
+    // Ensure sale_id and product_id are not null
+    if (row['sale_id'] == null || row['product_id'] == null) {
+      throw Exception("sale_id and product_id cannot be null");
+    }
     return db.insert('sale_items', row);
   }
 
