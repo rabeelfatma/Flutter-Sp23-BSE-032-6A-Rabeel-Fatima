@@ -5,95 +5,149 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoggedIn = false;
   String? _userEmail;
   String? _userName;
+  String? _uid; // Firestore document ID
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ✅ Getters
+  // ================= GETTERS =================
   bool get isLoggedIn => _isLoggedIn;
   String? get userEmail => _userEmail;
   String? get userName => _userName;
+  String? get uid => _uid;
 
-  // ✅ Setter for userName
+  // ================= SETTERS =================
   set userName(String? name) {
     _userName = name;
     notifyListeners();
   }
 
-  /// Login using Firestore
+  // ================= LOGIN =================
   Future<bool> login(String email, String password) async {
     try {
-      final query = await _firestore
+      final querySnapshot = await _firestore
           .collection('users')
-          .where('email', isEqualTo: email)
-          .where('password', isEqualTo: password) // For production: hash passwords
+          .where('email', isEqualTo: email.trim())
+          .limit(1)
           .get();
 
-      if (query.docs.isNotEmpty) {
-        _isLoggedIn = true;
-        _userEmail = email;
-        _userName = query.docs.first['name'] ?? '';
-        notifyListeners();
-        return true;
-      }
-      return false;
-    } catch (e) {
-      debugPrint("Login error: $e");
-      return false;
-    }
-  }
+      if (querySnapshot.docs.isEmpty) return false;
 
-  /// Signup using Firestore
-  Future<bool> signup(String name, String email, String password) async {
-    try {
-      // Check if email already exists
-      final existing = await _firestore
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .get();
+      final userData = querySnapshot.docs.first.data();
+      final docId = querySnapshot.docs.first.id;
 
-      if (existing.docs.isNotEmpty) return false;
+      if (userData['password'] != password) return false;
 
-      await _firestore.collection('users').add({
-        'name': name,
-        'email': email,
-        'password': password, // hash in production
-      });
+      _isLoggedIn = true;
+      _userEmail = email.trim();
+      _userName = userData['name'] ?? '';
+      _uid = docId;
+      notifyListeners();
 
       return true;
     } catch (e) {
-      debugPrint("Signup error: $e");
+      debugPrint('Login Error: $e');
       return false;
     }
   }
 
-  /// Reset Password
-  Future<bool> resetPassword(String email, String newPassword) async {
+  // ================= SIGNUP =================
+  Future<bool> signup(String name, String email, String password) async {
     try {
-      final query = await _firestore
+      final existingUser = await _firestore
           .collection('users')
-          .where('email', isEqualTo: email)
+          .where('email', isEqualTo: email.trim())
+          .limit(1)
           .get();
 
-      if (query.docs.isNotEmpty) {
-        final docId = query.docs.first.id;
-        await _firestore
-            .collection('users')
-            .doc(docId)
-            .update({'password': newPassword});
-        return true;
+      if (existingUser.docs.isNotEmpty) {
+        return false; // Email already exists
       }
-      return false;
+
+      final docRef = await _firestore.collection('users').add({
+        'name': name.trim(),
+        'email': email.trim(),
+        'password': password, // ⚠️ Hash in production
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      _isLoggedIn = true;
+      _userEmail = email.trim();
+      _userName = name.trim();
+      _uid = docRef.id;
+      notifyListeners();
+
+      return true;
     } catch (e) {
-      debugPrint("Reset password error: $e");
+      debugPrint('Signup Error: $e');
       return false;
     }
   }
 
-  /// Logout
+  // ================= RESET PASSWORD =================
+  Future<bool> resetPassword(String email, String newPassword) async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .where('email', isEqualTo: email.trim())
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) return false;
+
+      final docId = querySnapshot.docs.first.id;
+      await _firestore
+          .collection('users')
+          .doc(docId)
+          .update({'password': newPassword});
+
+      return true;
+    } catch (e) {
+      debugPrint('Reset Password Error: $e');
+      return false;
+    }
+  }
+
+  // ================= UPDATE PROFILE =================
+  Future<bool> updateProfile({String? name, String? email}) async {
+    if (_uid == null) return false;
+    try {
+      final data = <String, dynamic>{};
+      if (name != null) data['name'] = name.trim();
+      if (email != null) data['email'] = email.trim();
+
+      if (data.isEmpty) return false;
+
+      await _firestore.collection('users').doc(_uid).update(data);
+
+      if (name != null) _userName = name;
+      if (email != null) _userEmail = email;
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      debugPrint('Update Profile Error: $e');
+      return false;
+    }
+  }
+
+  // ================= UPDATE PASSWORD =================
+  Future<bool> updatePassword(String newPassword) async {
+    if (_uid == null) return false;
+    try {
+      await _firestore.collection('users').doc(_uid).update({'password': newPassword});
+      return true;
+    } catch (e) {
+      debugPrint('Update Password Error: $e');
+      return false;
+    }
+  }
+
+  // ================= LOGOUT =================
   void logout() {
     _isLoggedIn = false;
     _userEmail = null;
     _userName = null;
+    _uid = null;
     notifyListeners();
   }
 }

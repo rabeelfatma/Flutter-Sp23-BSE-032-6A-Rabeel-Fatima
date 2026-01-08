@@ -34,6 +34,7 @@ class _SignupScreenState extends State<SignupScreen> {
             children: [
               const SizedBox(height: 20),
 
+              // Name
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
@@ -45,6 +46,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Email
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -59,6 +61,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Password
               TextFormField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -80,6 +83,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 30),
 
+              // Signup Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

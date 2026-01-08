@@ -14,8 +14,7 @@ class ChangePasswordScreen extends StatefulWidget {
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController newPasswordController = TextEditingController();
-  final TextEditingController confirmPasswordController =
-  TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
   bool _loading = false;
 
   void _savePassword() async {
@@ -75,8 +74,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) return "Enter new password";
-                  if (val.length < 6)
-                    return "Password must be at least 6 chars";
+                  if (val.length < 6) return "Password must be at least 6 chars";
                   return null;
                 },
               ),
@@ -90,8 +88,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) return "Confirm password";
-                  if (val != newPasswordController.text)
-                    return "Passwords do not match";
+                  if (val != newPasswordController.text) return "Passwords do not match";
                   return null;
                 },
               ),

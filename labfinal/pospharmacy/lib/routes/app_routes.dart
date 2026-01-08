@@ -45,9 +45,9 @@ import '../models/ledger_model.dart';
 class AppRoutes {
   static final Map<String, WidgetBuilder> routes = {
     // Auth
-    '/login': (_) => const LoginScreen(),
-    '/signup': (_) => const SignupScreen(),
-    '/forgot-password': (_) => const ForgotPasswordScreen(),
+    '/login': (_) => const LoginScreen(), // ✅ Firebase-ready
+    '/signup': (_) => const SignupScreen(), // ✅ Firebase-ready
+    '/forgot-password': (_) => const ForgotPasswordScreen(), // ✅ Firebase-ready
 
     // Dashboard
     '/dashboard': (_) => const DashboardScreen(),
@@ -64,9 +64,9 @@ class AppRoutes {
     '/add-customer': (_) => const AddCustomerScreen(),
 
     // Ledger
-    '/ledger': (_) => const LedgerScreen(), // Ledger list screen
-    '/add-ledger-entry': (_) => const AddLedgerEntryScreen(), // Add entry
-    // Detail screen is dynamic route below
+    '/ledger': (_) => const LedgerScreen(),
+    '/add-ledger-entry': (_) => const AddLedgerEntryScreen(),
+    // Detail screens are dynamic
 
     // Reports
     '/reports': (_) => const ReportsHomeScreen(),
@@ -76,9 +76,9 @@ class AppRoutes {
     '/backup-settings': (_) => const BackupSettingsScreen(),
     '/restore-settings': (_) => const RestoreScreen(),
     '/account': (_) => const AccountScreen(),
-    '/profile-edit': (_) => const ProfileEditScreen(),
-    '/change-password': (_) => const ChangePasswordScreen(),
-    '/notification-settings': (_) => const NotificationSettingsScreen(),
+    '/profile-edit': (_) => const ProfileEditScreen(), // ✅ Firebase-ready
+    '/change-password': (_) => const ChangePasswordScreen(), // ✅ Firebase-ready
+    '/notification-settings': (_) => const NotificationSettingsScreen(), // ✅ Firebase-ready
   };
 
   // Dynamic routes with arguments

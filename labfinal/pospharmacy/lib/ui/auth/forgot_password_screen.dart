@@ -70,6 +70,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               const SizedBox(height: 30),
 
+              // Reset Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -86,8 +87,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text("Password Reset Successful")),
+                          const SnackBar(content: Text("Password Reset Successful")),
                         );
                         Navigator.pop(context);
                       } else {

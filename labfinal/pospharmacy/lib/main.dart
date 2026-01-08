@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:provider/provider.dart';
 
 // 🔔 Simulated In-App Notification Service
 import 'services/notification_service.dart';
@@ -13,13 +15,34 @@ import 'ui/auth/login_screen.dart';
 // Routes
 import 'routes/app_routes.dart';
 
+// Providers
+import 'providers/auth_provider.dart';
+
+// 🔥 Firebase Options
+import 'firebase_options.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔥 Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // 🔔 Initialize simulated notification service
   await NotificationService().init();
 
-  runApp(const MyApp());
+  // ✅ Wrap app with Provider(s)
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthProvider>(
+          create: (_) => AuthProvider(),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -30,15 +53,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
-
-      // ✅ Global Theme
       theme: AppTheme.lightTheme,
-
-      // ✅ Initial Screen (Login first)
       home: const LoginScreen(),
-
-      // ✅ Centralized named routes
       routes: AppRoutes.routes,
     );
   }
 }
+
+
