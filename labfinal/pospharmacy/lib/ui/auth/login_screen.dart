@@ -44,15 +44,21 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const Icon(Icons.point_of_sale, size: 100, color: Colors.white),
                 const SizedBox(height: 20),
+
+                // FIXED: Font size adjusted and maxLines added for single line display
                 Text(
                   AppStrings.appName,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.visible,
                   style: const TextStyle(
-                    fontSize: 32,
+                    fontSize: 26, // Reduced from 32 to fit in one line
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     letterSpacing: 1.2,
                   ),
                 ),
+
                 const SizedBox(height: 40),
 
                 // Form Container
@@ -148,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ? const CircularProgressIndicator(color: Colors.white)
                                 : const Text(
                               AppStrings.login,
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                             ),
                           ),
                         ),
