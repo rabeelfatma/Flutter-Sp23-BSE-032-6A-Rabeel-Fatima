@@ -123,4 +123,4 @@ Dashboard → Counters & Charts
 POS → Cart → Checkout → Receipt```
 
 Customer → Ledger → Reports
-(Include screenshots for GitHub README.)
+
