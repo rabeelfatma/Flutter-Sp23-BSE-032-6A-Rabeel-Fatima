@@ -1,4 +1,4 @@
-# pospharmacy
+```# pospharmacy
 Smart POS & Full Inventory Management App – Documentation
 1️⃣ Project Overview
 Title: Smart POS & Full Inventory Management App
@@ -120,7 +120,7 @@ Settings → Backup Settings → Backup/Restore/Schedule
 
 Dashboard → Counters & Charts
 
-POS → Cart → Checkout → Receipt
+POS → Cart → Checkout → Receipt```
 
 Customer → Ledger → Reports
 (Include screenshots for GitHub README.)
