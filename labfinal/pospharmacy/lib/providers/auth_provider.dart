@@ -16,8 +16,14 @@ class AuthProvider extends ChangeNotifier {
   String? get profileImagePath => _profileImagePath;
   String? get uid => _uid;
 
+  // 🔹 Added setters for reactive updates
   set userName(String? v) {
     _userName = v;
+    notifyListeners();
+  }
+
+  set profileImagePath(String? v) {
+    _profileImagePath = v;
     notifyListeners();
   }
 
@@ -89,8 +95,9 @@ class AuthProvider extends ChangeNotifier {
 
       await _firestore.collection('users').doc(_uid).update(data);
 
+      // 🔹 Update local state and notify UI immediately
       _userName = name;
-      _profileImagePath = imagePath;
+      if (imagePath != null) _profileImagePath = imagePath;
       notifyListeners();
       return true;
     } catch (e) {

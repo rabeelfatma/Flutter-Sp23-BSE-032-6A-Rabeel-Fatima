@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart'; // 🔹 Fluttertoast import
 import '../../services/backup_service.dart';
 import '../../services/drive_service.dart';
 import '../../services/notification_service.dart';
 import '../../widgets/primary_button.dart';
 import 'dart:io';
+
+// 🔄 Auto Sync
+import '../../core/utils/sync_manager.dart';
+import '../../core/utils/sync_preferences.dart'; // 🔹 Added import
 
 class BackupSettingsScreen extends StatefulWidget {
   const BackupSettingsScreen({super.key});
@@ -16,9 +21,11 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
   bool isProcessing = false;
   String processingMessage = "";
 
-  bool autoBackupEnabled = false; // New: Auto Backup toggle
-  bool cloudBackupEnabled = true; // New: Cloud Backup toggle
-  int backupFrequencyHours = 24; // New: Frequency (hours)
+  bool autoBackupEnabled = false;
+  bool cloudBackupEnabled = true;
+  int backupFrequencyHours = 24;
+
+  bool autoSyncEnabled = true; // 🔹 Auto Sync toggle
 
   final BackupService _backupService = BackupService();
   final DriveService _driveService = DriveService();
@@ -113,6 +120,26 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
     });
   }
 
+  /// 🔹 Manual Sync
+  Future<void> _handleManualSync() async {
+    setState(() {
+      isProcessing = true;
+      processingMessage = "Syncing data...";
+    });
+
+    try {
+      await SyncManager.syncAll();
+      Fluttertoast.showToast(msg: "Sync completed successfully!", toastLength: Toast.LENGTH_SHORT);
+    } catch (e) {
+      Fluttertoast.showToast(msg: "Sync failed: $e", toastLength: Toast.LENGTH_LONG);
+    }
+
+    setState(() {
+      isProcessing = false;
+      processingMessage = "";
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -174,6 +201,28 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
               PrimaryButton(
                 text: "Restore Backup",
                 onPressed: _handleRestore,
+              ),
+              const SizedBox(height: 40),
+
+              /// 🔹 Auto Sync toggle
+              SwitchListTile(
+                title: const Text("Enable Auto Sync"),
+                subtitle: const Text("Automatically sync offline data when internet is available"),
+                value: autoSyncEnabled,
+                onChanged: (val) {
+                  setState(() => autoSyncEnabled = val);
+                  SyncPreference.autoSyncEnabled = val; // Update global preference
+                  Fluttertoast.showToast(
+                    msg: val ? "Auto Sync Enabled" : "Auto Sync Disabled",
+                    toastLength: Toast.LENGTH_SHORT,
+                  );
+                },
+              ),
+
+              /// 🔹 Manual Sync button
+              PrimaryButton(
+                text: "Sync Now",
+                onPressed: _handleManualSync,
               ),
             ],
           ),

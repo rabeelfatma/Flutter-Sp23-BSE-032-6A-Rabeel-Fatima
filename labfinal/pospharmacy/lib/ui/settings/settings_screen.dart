@@ -37,15 +37,15 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.backup),
             title: const Text("Backup Data"),
             onTap: () =>
-                Navigator.pushNamed(context, '/backup-settings'),
+                Navigator.pushNamed(context, '/backupSettings'), // 🔹 Correct route
           ),
 
-          /// Restore Backup
+          /// Restore Backup / Restore Data
           ListTile(
             leading: const Icon(Icons.restore),
             title: const Text("Restore Data"),
             onTap: () =>
-                Navigator.pushNamed(context, '/restore-settings'),
+                Navigator.pushNamed(context, '/backupSettings'), // 🔹 Points to BackupSettingsScreen for full restore functionality
           ),
 
           /// 🔹 Backup History (NEW)
@@ -53,7 +53,7 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.history),
             title: const Text("Backup History"),
             onTap: () =>
-                Navigator.pushNamed(context, '/backup-history'),
+                Navigator.pushNamed(context, '/backupHistory'),
           ),
 
           const Divider(),

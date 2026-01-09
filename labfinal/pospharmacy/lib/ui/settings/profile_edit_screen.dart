@@ -34,7 +34,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     nameController.text = auth.userName ?? "";
     emailController.text = auth.userEmail ?? "";
     _savedImagePath = auth.profileImagePath;
-    if (_savedImagePath != null) {
+    if (_savedImagePath != null && File(_savedImagePath!).existsSync()) {
       _profileImage = File(_savedImagePath!);
     }
   }
@@ -75,6 +75,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
     setState(() => _loading = false);
 
     if (success) {
+      // Update provider state immediately
+      auth.userName = nameController.text.trim();
+      auth.profileImagePath = _savedImagePath;
+      auth.notifyListeners();
+
       NotificationService().showNotification(
         context: context,
         title: "Profile Saved",
@@ -108,12 +113,11 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
                     radius: 50,
                     backgroundImage: _profileImage != null
                         ? FileImage(_profileImage!)
-                        : const AssetImage('assets/img.png')
-                    as ImageProvider,
+                        : const AssetImage('assets/img.png') as ImageProvider,
                   ),
                   IconButton(
                     icon: const Icon(Icons.edit),
-                    onPressed: _pickImage,
+                    onPressed: _pickImage, // Always available
                   ),
                 ],
               ),
