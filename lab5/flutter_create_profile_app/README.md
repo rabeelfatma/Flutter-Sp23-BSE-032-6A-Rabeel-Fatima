@@ -1,11 +1,11 @@
 Video Link:
 https://drive.google.com/file/d/1qjinvTe-KxO9iz3QGBGJALv4a21-aa6X/view?usp=drive_link
 Screenshots:
-<img width="702" height="1600" alt="image" src="https://github.com/user-attachments/assets/ccc38542-8593-43fe-acc6-96468c0b3567" />
-<img width="702" height="1600" alt="image" src="https://github.com/user-attachments/assets/d27d11a9-4d98-4d4e-b989-8df0a8264f6a" />
-<img width="702" height="1600" alt="image" src="https://github.com/user-attachments/assets/d154a4cb-5c43-49d0-b29a-cd9537e9e583" />
-<img width="702" height="1600" alt="image" src="https://github.com/user-attachments/assets/996038f0-ff1c-44e7-8345-4dd203a02b97" />
-<img width="702" height="1600" alt="image" src="https://github.com/user-attachments/assets/b5b704f7-cac6-4c85-a201-9507fb243ba8" />
+<img width="402" height="1600" alt="image" src="https://github.com/user-attachments/assets/ccc38542-8593-43fe-acc6-96468c0b3567" />
+<img width="402" height="1600" alt="image" src="https://github.com/user-attachments/assets/d27d11a9-4d98-4d4e-b989-8df0a8264f6a" />
+<img width="402" height="1600" alt="image" src="https://github.com/user-attachments/assets/d154a4cb-5c43-49d0-b29a-cd9537e9e583" />
+<img width="402" height="1600" alt="image" src="https://github.com/user-attachments/assets/996038f0-ff1c-44e7-8345-4dd203a02b97" />
+<img width="402" height="1600" alt="image" src="https://github.com/user-attachments/assets/b5b704f7-cac6-4c85-a201-9507fb243ba8" />
 
 
 
